@@ -45,11 +45,11 @@ setup_requirements = [
 setup(
     name='spype',
     version=__version__,
-    description="A lightweight data pipeline",
+    description="A lightweight data pipeline library",
     long_description=readme,
     author="Derrick Chambers",
     author_email='djachambeador@gmail.com',
-    url='https://bitbucket.org/smrd/spype',
+    url='https://github.com/d-chambers/spype',
     packages=find_packages('spype'),
     package_dir={'spype': 'spype'},
     include_package_data=True,
@@ -57,9 +57,9 @@ setup(
     extra_require=extra_require,
     license="BSD",
     zip_safe=False,
-    keywords='spype',
+    keywords='data pipeline',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 3.6',
@@ -67,4 +67,5 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     setup_requires=setup_requirements,
+    python_requires='>=3.6',
 )

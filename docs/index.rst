@@ -23,8 +23,7 @@ Spype has three main design goals:
 
 Liscence: BSD
 
-WARNING: spype is brand new and highly experimental, dont use it in production until it matures a little.
-Also, the API will chainge.
+WARNING: spype is brand new and experimental, dont use it in production until it matures a little, and expect frequent API changes.
 
 Contents:
 
