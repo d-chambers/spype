@@ -12,11 +12,11 @@ LICENSE
 BSD
 
 .. _documentation: docs/_build/html/index.html
-.. |Build Status| image:: https://travis-ci.org/spype/spype.svg?branch=master
-   :target: https://travis-ci.org/dask/dask
-.. |Coverage| image:: https://coveralls.io/repos/spype/spype/badge.svg
-   :target: https://coveralls.io/r/spype/spype
-   :alt: Coverage status
+.. |Build Status| image:: https://travis-ci.org/d-chambers/spype.svg?branch=master
+   :target: https://travis-ci.org/d-chambers/spype
+.. |Coverage| image:: https://coveralls.io/repos/github/d-chambers/spype/badge.svg?branch=master
+   :target: https://coveralls.io/github/d-chambers/spype?branch=master
+
 .. |Doc Status| image:: http://readthedocs.org/projects/spype/badge/?version=latest
    :target: http://dask.pydata.org/en/latest/
    :alt: Documentation Status
