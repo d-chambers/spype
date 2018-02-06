@@ -17,8 +17,9 @@ BSD
 .. |Coverage| image:: https://coveralls.io/repos/github/d-chambers/spype/badge.svg?branch=master
    :target: https://coveralls.io/github/d-chambers/spype?branch=master
 
-.. |Doc Status| image:: http://readthedocs.org/projects/spype/badge/?version=latest
-   :target: http://dask.pydata.org/en/latest/
+.. |Doc Status| image:: https://readthedocs.org/projects/spype/badge/?version=latest
+   :target: http://spype.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
+
 .. |Version Status| image:: https://img.shields.io/pypi/v/spype.svg
    :target: https://pypi.python.org/pypi/spype/

@@ -1,2 +1,4 @@
+sphinx>=1.5.1
 nbsphinx
+ipykernel
 sphinx_autodoc_typehints
