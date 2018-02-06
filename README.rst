@@ -11,7 +11,7 @@ LICENSE
 ---------
 BSD
 
-.. _documentation: docs/_build/html/index.html
+.. _documentation: http://spype.readthedocs.io/en/latest/index.html
 .. |Build Status| image:: https://travis-ci.org/d-chambers/spype.svg?branch=master
    :target: https://travis-ci.org/d-chambers/spype
 .. |Coverage| image:: https://coveralls.io/repos/github/d-chambers/spype/badge.svg?branch=master
