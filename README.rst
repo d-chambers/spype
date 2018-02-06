@@ -4,7 +4,7 @@ sflow
 
 |Build Status| |Coverage| |Doc Status| |Version Status|
 
-Sflow is a lightweight data processing pipeline.
+Sflow is a libarary for building lightweight data processing pipelines.
 See the documentation_ for more information.
 
 LICENSE
