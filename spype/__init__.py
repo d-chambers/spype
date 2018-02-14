@@ -8,6 +8,7 @@ from spype.core.pype import Pype
 from spype.utils import context
 from spype.version import __version__
 from spype.exceptions import ExitTask
+from spype.types import signature
 
 from spype.constants import PYPE_FIXTURES, TASK_FIXTURES
 

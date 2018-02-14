@@ -1,12 +1,13 @@
 import abc
 import copy
-import inspect
+from inspect import Signature
 from collections import ChainMap
 from contextlib import suppress
 from functools import partial
 from types import MappingProxyType as MapProxy
 from typing import TypeVar, Optional, Callable, Any, Mapping, Sequence
 
+import spype
 from spype.constants import (FIXTURE_NAMES, CALLBACK_NAMES, PYPE_FIXTURES,
                              WRAP_FIXTURES)
 from spype.core import wrap
@@ -15,6 +16,7 @@ from spype.exceptions import ReturnCallbackValue, UnresolvedDependency, ExitTask
 from spype.types import valid_input, compatible_instance
 from spype.utils import (iterate, apply_partial, de_args_kwargs, copy_func,
                          get_default_names, function_or_class_name)
+
 
 _fixtures = {**dict.fromkeys(PYPE_FIXTURES), **dict.fromkeys(WRAP_FIXTURES)}
 EMPTY_FIXTURES = MapProxy(_fixtures)
@@ -60,7 +62,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
     """
 
     # spype attributes
-    signature: Optional[inspect.Signature] = None
+    signature: Optional[Signature] = None
     pype: Optional['Pype'] = None
     _decorator_task: bool = False
     supported_fixtures = FIXTURE_NAMES
@@ -78,10 +80,10 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             msg = (f'{cls} defines a run method, this is not permitted')
             raise TypeError(msg)
 
-    def get_signature(self) -> inspect.Signature:
+    def get_signature(self) -> Signature:
         """ return signature of bound run method """
         if self.signature is None:
-            self.signature = inspect.signature(self.__call__)
+            self.signature = spype.signature(self.__call__)
         return self.signature
 
     def get_option(self, option: str) -> Any:
@@ -249,7 +251,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             with suppress(AttributeError):
                 callback = callback.__func__
             # determine needed values from original task parameters
-            cb_sig = inspect.signature(callback)  # callback signature
+            cb_sig = spype.signature(callback)  # callback signature
             expected = set(cb_sig.parameters) & set(control['signature'].parameters)
             if expected:
                 signature = control['signature']
@@ -275,7 +277,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             Any callable
         """
         assert callable(callback)
-        sig = inspect.signature(callback)
+        sig = spype.signature(callback)
         call_params = set(self.get_signature().parameters)
         supported = set(FIXTURE_NAMES) | call_params
         if not set(sig.parameters).issubset(supported):
@@ -396,7 +398,7 @@ def task(func: Optional[Callable] = None, *,
     update_dict = {it: val for it, val in locals().items()
                    if it != 'func' and val is not None}
     func.__call__ = func
-    func.signature = inspect.signature(func)
+    func.signature = spype.signature(func)
     func.__dict__.update(update_dict)
     # add all attributes that return a wrapped task
     for item in wrap.Wrap._wrap_funcs:

@@ -1,5 +1,5 @@
 spype
-======================================
+=====
 
 Spype is a [s]imple [py]thon [p]ipelin[e] library.
 
@@ -25,7 +25,7 @@ Liscence: BSD
 
 WARNING: spype is brand new and experimental, dont use it in production until it matures a little, and expect frequent API changes.
 
-Contents:
+Documentation:
 
 .. toctree::
    :maxdepth: 1
@@ -39,9 +39,11 @@ Contents:
 
    notebooks/tutorial.ipynb
 
+   contributing.rst
+
 
 API
-======================================
+===
 .. toctree::
    :maxdepth: 1
 

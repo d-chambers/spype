@@ -1,14 +1,14 @@
 """
 Tests for the type checking in sflow
 """
-import inspect
+# import inspect
 from typing import (Union, Any, Text, Optional, Sequence, Mapping, Dict,
                     List, Tuple, Callable, TypeVar)
 
 import pytest
 
 from spype.types import (compatible_type, compatible_callables, valid_input,
-                         compatible_instance)
+                         compatible_instance, signature)
 
 
 # --------------- helper functions/classes
@@ -100,12 +100,20 @@ def args_kwargs_func(*args, **kwargs):
     pass
 
 
-def range(num: int) -> List[int]:
-    return range(num)
+def range_func(num: int) -> List[int]:
+    return range_func(num)
 
 
 def int_mas_one(a: int) -> int:
     return a + 1
+
+
+def str_honda(a: 'Honda') -> 'Honda':
+    pass
+
+
+def str_car(a: Car) -> 'Car':
+    pass
 
 
 blank_tv = TypeVar('blank_tv')
@@ -118,6 +126,19 @@ car_str = TypeVar('car_str', Car, str)
 
 
 # ---------------------- object_is_type tests
+
+
+class TestSignature:
+    """ tests for the custom signature to eval string types """
+    funcs_with_str_types = [str_car, str_honda]
+    normal_funcs = [int_mas_one, range_func, kwargs_func, args_func]
+
+    @pytest.mark.parametrize('func', funcs_with_str_types + normal_funcs)
+    def test_no_string_annotations(self, func):
+        """ ensure string types are not """
+        sig = signature(func)
+        for name, sig_type in sig.parameters.items():
+            assert not isinstance(sig_type.annotation, str)
 
 
 class TestObjectIsType:
@@ -272,6 +293,7 @@ class TestCompatibleFunctions:
         (func_3in_2out, func_2in_no_hints),
         (higher_order_func1, higher_order_func2),
         (int_mas_one, int2str),
+        (str_honda, str_car),
     )
     incompat_functions = (
         (str2float, int2str),
@@ -299,8 +321,8 @@ class TestCompatibleFunctions:
     @pytest.mark.parametrize('func1, func2', compat_functions)
     def test_signatures(self, func1, func2):
         """ ensure signatures can aslo be passed to compatible callables """
-        sig1 = inspect.signature(func1)
-        sig2 = inspect.signature(func2)
+        sig1 = signature(func1)
+        sig2 = signature(func2)
         assert compatible_callables(sig1, sig2)
 
     @pytest.mark.parametrize('func1, func2', incompat_strict)
