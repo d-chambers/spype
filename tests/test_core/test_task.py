@@ -12,7 +12,7 @@ import pytest
 
 import spype
 from spype import ExitTask
-from spype import Task, task, Wrap, context, pype_input
+from spype import Task, task, Wrap, pype_input
 from spype.constants import CALLBACK_NAMES, FIXTURE_NAMES
 
 
@@ -524,93 +524,51 @@ class TestPartials:
         assert 'is not a valid paramter' in str(e)
 
 
-class TestIffCompatCheck:
-    """ tests for using if statements on a task check compatibility between
-     the tasks run method and the callable(s) fed to the iff statement """
+class TestPredicates:
+    """ tests for using predicates in the task """
     _should_raise = []
     _should_not_raise = []
 
-    # a conditional that should raise with raise_two
+    def test_iff_fixtures(self, some_dict):
+        """ standard fixtures should be accessible through predicates """
 
-    def bad_conditional(self, x, y, z):
-        True
+        def some_iff(e, num1, pype):
+            some_dict['num1'] = num1
+            return True
 
-    def good_conditional(self, x):
-        True
+        @spype.task(predicate=some_iff)
+        def some_task(num1, num2):
+            return num1 + num2
 
-    @pytest.fixture
-    def global_compat_on(self):
-        """ ensure type checking is on for task input/ouput for this suite of
-         tests """
-        with context(check_compatibility=True):
-            yield
+        some_task.run(1, 2)
 
-    @pytest.fixture
-    def global_compat_off(self):
-        """ with global compat options on return task and incompat condition """
-        with context(check_compatibility=False):
-            yield
+        assert some_dict['num1'] == 1
 
-    # fixtures that should raise
-    @pytest.fixture
-    @pytest.append_func_name(_should_raise)
-    def func_with_global_compat_off(self, global_compat_on):
-        """ with global compat options on return task and incompat condition """
-        return raise2, self.bad_conditional
+    def test_sequence_of_predicates(self, some_list):
+        """ passing a sequence of predicates should execute them in order
+        until one returns a falsey value """
 
-    @pytest.fixture
-    @pytest.append_func_name(_should_raise)
-    def instance_check_on(self, global_compat_off):
-        """ with global compat off return task that has an instance level
-        compat check """
-        raise2.check_compatibility = True
-        yield raise2, self.bad_conditional
-        del raise2.check_compatibility
+        def func1():
+            some_list.append(1)
+            return True
 
-    @pytest.fixture
-    @pytest.append_func_name(_should_raise)
-    def bad_fun_in_list(self, global_compat_on):
-        """ return a list of conditionals, one of them is bad """
-        return raise2, [self.good_conditional, self.bad_conditional]
+        def func2():
+            some_list.append(2)
+            return False
 
-    # fixtures that should not raise
-    @pytest.fixture
-    @pytest.append_func_name(_should_not_raise)
-    def no_compat_options(self, global_compat_off):
-        """ disable global compat check temporarily """
-        return raise2, self.bad_conditional
+        def func3():
+            some_list.append(3)
+            return True
 
-    @pytest.fixture
-    @pytest.append_func_name(_should_not_raise)
-    def instance_compat_off(self, global_compat_on):
-        """ turn compat check off on the instance level, should not raise """
-        raise2.check_compatibility = False
-        yield raise2, self.bad_conditional
-        del raise2.check_compatibility
+        @spype.task(predicate=[func1, func2, func3])
+        def bob():
+            pass
 
-    # aggregate fixtures
-    @pytest.fixture(params=_should_raise)
-    def should_raise(self, request):
-        return request.getfixturevalue(request.param)
+        bob.run()
 
-    @pytest.fixture(params=_should_not_raise)
-    def should_not_raise(self, request):
-        return request.getfixturevalue(request.param)
-
-    # tests
-    def test_should_raise(self, should_raise):
-        """ test that the conditionals that should raise do """
-        task, cond = should_raise
-        with pytest.raises(TypeError):
-            task.iff(cond)
-
-    def test_should_not_raise(self, should_not_raise):
-        """ make sure task that should not raise on iffs do not """
-        task, cond = should_not_raise
-        try:
-            task.iff(cond)
-        except TypeError:
-            pytest.fail(f'{task} with {cond} should not raise')
+        assert 1 in some_list
+        assert 2 in some_list
+        assert 3 not in some_list
 
 
 class TestPypeInputWrapAndTask:

@@ -2,7 +2,7 @@
 Constants, and their explanations, used by sflow
 """
 from types import MappingProxyType as MapProxy
-from typing import (Optional, Callable, Sequence, Union, Tuple, Dict, Any,
+from typing import (Callable, Sequence, Union, Tuple, Dict, Any,
                     Hashable)
 
 # ---------------------- Fixtures/callbacks
@@ -43,7 +43,7 @@ CALLBACK_NAMES = ('on_start', 'on_failure', 'on_success', 'on_finish')
 bool_func = Callable[..., bool]
 
 # the type expected by spype.core._wraps for conditional flow control
-conditional_type = Optional[bool_func]
+predicate_type = Union[bool_func, Sequence[bool_func]]
 
 # The type for adapt argument of slflow.utils.kwargs_args
 adapt_type = Sequence[Union[str, int]]
@@ -57,6 +57,9 @@ nodes_type = Sequence[Hashable]
 # edge types for digraph
 edge_type = Tuple[Hashable, Hashable]
 edges_type = Sequence[edge_type]
+
+# callback types
+callback_type = Union[Callable, Sequence[Callable]]
 
 # -------------------- pype constannts
 
