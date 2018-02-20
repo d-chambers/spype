@@ -2,7 +2,7 @@
 Constants, and their explanations, used by sflow
 """
 from types import MappingProxyType as MapProxy
-from typing import (Optional, Callable, Sequence, Union, Tuple, Dict, Any,
+from typing import (Callable, Sequence, Union, Tuple, Dict, Any,
                     Hashable)
 
 # ---------------------- Fixtures/callbacks

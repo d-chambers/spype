@@ -536,7 +536,6 @@ class TestPredicates:
             some_dict['num1'] = num1
             return True
 
-
         @spype.task(predicate=some_iff)
         def some_task(num1, num2):
             return num1 + num2
