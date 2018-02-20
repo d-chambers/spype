@@ -4,9 +4,11 @@ import inspect
 from collections import ChainMap
 from contextlib import suppress
 from functools import partial
+from inspect import Signature
 from types import MappingProxyType as MapProxy
 from typing import TypeVar, Optional, Callable, Any, Mapping
 
+import spype
 from spype.constants import (FIXTURE_NAMES, CALLBACK_NAMES, PYPE_FIXTURES,
                              WRAP_FIXTURES, callback_type, predicate_type)
 from spype.core import wrap
@@ -185,7 +187,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
     """
 
     # spype attributes
-    signature: Optional[inspect.Signature] = None
+    signature: Optional[Signature] = None
     pype: Optional['Pype'] = None
     _decorator_task: bool = False
     supported_fixtures = FIXTURE_NAMES
@@ -203,10 +205,10 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             msg = (f'{cls} defines a run method, this is not permitted')
             raise TypeError(msg)
 
-    def get_signature(self) -> inspect.Signature:
+    def get_signature(self) -> Signature:
         """ return signature of bound run method """
         if self.signature is None:
-            self.signature = inspect.signature(self.__call__)
+            self.signature = spype.signature(self.__call__)
         return self.signature
 
     def get_option(self, option: str) -> Any:
@@ -345,7 +347,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             Any callable
         """
         assert callable(callback)
-        sig = inspect.signature(callback)
+        sig = spype.signature(callback)
         call_params = set(self.get_signature().parameters)
         supported = set(FIXTURE_NAMES) | call_params
         if not set(sig.parameters).issubset(supported):
@@ -468,7 +470,7 @@ def task(func: Optional[Callable] = None, *,
     update_dict = {it: val for it, val in locals().items()
                    if it != 'func' and val is not None}
     func.__call__ = func
-    func.signature = inspect.signature(func)
+    func.signature = spype.signature(func)
     func.__dict__.update(update_dict)
     # add all attributes that return a wrapped task
     for item in wrap.Wrap._wrap_funcs:

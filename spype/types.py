@@ -7,7 +7,7 @@ Note: much of this was inspired by the mypy and enforce
 import collections
 import functools
 import inspect
-from inspect import Signature, signature, _empty
+from inspect import Signature, _empty, Parameter, BoundArguments
 from typing import (Union, Callable, Any, get_type_hints, Optional, Sequence,
                     List, Dict, Mapping, Tuple, Set, TypeVar)
 
@@ -141,7 +141,7 @@ def _get_func_output(func):
             return func.__args__[-1]
         except (IndexError, TypeError):
             return Any
-    if not isinstance(func, inspect.Signature):
+    if not isinstance(func, Signature):
         return get_type_hints(func).get('return', Any)
     else:
         return func.return_annotation
@@ -154,7 +154,7 @@ def _get_func_input(func):
             return func.__args__[:-1]
         except (IndexError, TypeError):
             return (Any,)
-    if not isinstance(func, inspect.Signature):
+    if not isinstance(func, Signature):
         # hints = get_type_hints(func)
         sig = signature(func)
         # return tuple([hints.get(x, Any) for x in list(sig.parameters)])
@@ -447,9 +447,9 @@ def compatible_callables(func1: Callable, func2: Callable,
     return compatible_type(func1_comp, func2_comp, strict=strict)
 
 
-def valid_input(func: Union[inspect.Signature, Callable], *args,
+def valid_input(func: Union[Signature, Callable], *args,
                 check_type: bool = True,
-                bound: Optional[inspect.BoundArguments] = None, **kwargs):
+                bound: Optional[BoundArguments] = None, **kwargs):
     """
     Return True if inputs are valid for a callable or signature.
 
@@ -487,3 +487,36 @@ def _valid_signature_types(bind):
         if not compatible_instance(args[arg], arg_types[arg].annotation):
             return False
     return True
+
+
+def signature(func: Callable) -> Signature:
+    """
+    Function for getting signature and handling types indicated by strings.
+
+    Since some type hints can be passed as strings, this is a function to
+    return a signature of a callable that has the string types evaluated.
+
+    Parameters
+    ----------
+    func
+        Any callable.
+
+    Returns
+    -------
+    A signature object.
+    """
+    # get signature of original functions
+    sig = inspect.signature(func)
+    params = collections.OrderedDict(sig.parameters)
+    # get hints attached to functions. This evals string hints
+    hints = get_type_hints(func)
+    return_annotation = hints.pop('return', Parameter.empty)
+    # swap out unevaluated annotations for evaluated ones
+    for name, hint in hints.items():
+        params[name] = params[name].replace(annotation=hint)
+    # get new signature with evaluated annotations
+    out = sig.replace(parameters=list(params.values()),
+                      return_annotation=return_annotation)
+    # ensure the same argument names are there and return
+    assert set(out.parameters) == set(sig.parameters)
+    return out
