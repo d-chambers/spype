@@ -907,6 +907,17 @@ class TestIff:
         assert iff_pype(1) == 6
         assert iff_pype(0) == 0
 
+    def test_single_fixture(self, some_dict):
+        """ ensure a predicate with a single """
+        def log_pype(pype):
+            some_dict['pype'] = pype
+            return True
+
+        pype = pype_input | divide_numbers.iff(log_pype)
+        pype(1, 2)
+
+        assert some_dict['pype'] is pype
+
 
 class TestFan:
     """ tests for fanning """

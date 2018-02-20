@@ -12,7 +12,7 @@ import pytest
 
 import spype
 from spype import ExitTask
-from spype import Task, task, Wrap, context, pype_input
+from spype import Task, task, Wrap, pype_input
 from spype.constants import CALLBACK_NAMES, FIXTURE_NAMES
 
 
@@ -524,93 +524,23 @@ class TestPartials:
         assert 'is not a valid paramter' in str(e)
 
 
-class TestIffCompatCheck:
+class TestIff:
     """ tests for using if statements on a task check compatibility between
      the tasks run method and the callable(s) fed to the iff statement """
     _should_raise = []
     _should_not_raise = []
 
-    # a conditional that should raise with raise_two
+    def test_iff_fixtures(self, some_dict):
+        """ iff should use fixtures just like callbacks """
 
-    def bad_conditional(self, x, y, z):
-        True
+        def some_iff(e, num1, pype):
+            some_dict['num1'] = num1
+            return True
 
-    def good_conditional(self, x):
-        True
+        wrap = divide_numbers.iff(some_iff)
+        wrap(1, 2)
 
-    @pytest.fixture
-    def global_compat_on(self):
-        """ ensure type checking is on for task input/ouput for this suite of
-         tests """
-        with context(check_compatibility=True):
-            yield
-
-    @pytest.fixture
-    def global_compat_off(self):
-        """ with global compat options on return task and incompat condition """
-        with context(check_compatibility=False):
-            yield
-
-    # fixtures that should raise
-    @pytest.fixture
-    @pytest.append_func_name(_should_raise)
-    def func_with_global_compat_off(self, global_compat_on):
-        """ with global compat options on return task and incompat condition """
-        return raise2, self.bad_conditional
-
-    @pytest.fixture
-    @pytest.append_func_name(_should_raise)
-    def instance_check_on(self, global_compat_off):
-        """ with global compat off return task that has an instance level
-        compat check """
-        raise2.check_compatibility = True
-        yield raise2, self.bad_conditional
-        del raise2.check_compatibility
-
-    @pytest.fixture
-    @pytest.append_func_name(_should_raise)
-    def bad_fun_in_list(self, global_compat_on):
-        """ return a list of conditionals, one of them is bad """
-        return raise2, [self.good_conditional, self.bad_conditional]
-
-    # fixtures that should not raise
-    @pytest.fixture
-    @pytest.append_func_name(_should_not_raise)
-    def no_compat_options(self, global_compat_off):
-        """ disable global compat check temporarily """
-        return raise2, self.bad_conditional
-
-    @pytest.fixture
-    @pytest.append_func_name(_should_not_raise)
-    def instance_compat_off(self, global_compat_on):
-        """ turn compat check off on the instance level, should not raise """
-        raise2.check_compatibility = False
-        yield raise2, self.bad_conditional
-        del raise2.check_compatibility
-
-    # aggregate fixtures
-    @pytest.fixture(params=_should_raise)
-    def should_raise(self, request):
-        return request.getfixturevalue(request.param)
-
-    @pytest.fixture(params=_should_not_raise)
-    def should_not_raise(self, request):
-        return request.getfixturevalue(request.param)
-
-    # tests
-    def test_should_raise(self, should_raise):
-        """ test that the conditionals that should raise do """
-        task, cond = should_raise
-        with pytest.raises(TypeError):
-            task.iff(cond)
-
-    def test_should_not_raise(self, should_not_raise):
-        """ make sure task that should not raise on iffs do not """
-        task, cond = should_not_raise
-        try:
-            task.iff(cond)
-        except TypeError:
-            pytest.fail(f'{task} with {cond} should not raise')
+        assert some_dict['num1'] == 1
 
 
 class TestPypeInputWrapAndTask:

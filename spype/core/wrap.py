@@ -7,16 +7,17 @@ from functools import partial
 from types import MappingProxyType as MapProxy
 from typing import Optional, Union, Mapping
 
-from spype.constants import conditional_type, CALLBACK_NAMES
+from spype.constants import predicate_type, CALLBACK_NAMES, PYPE_FIXTURES
 from spype.core import pype
 from spype.core import task
 from spype.core.sbase import _SpypeBase
 from spype.exceptions import TaskReturnedNone, NoReturnAnnotation
-from spype.types import compatible_callables, valid_input
+from spype.types import valid_input
 from spype.utils import (args_kwargs, iterate, de_args_kwargs,
                          partial_to_kwargs, sig_to_args_kwargs,
                          function_or_class_name)
 
+EMPTY_PYPE_FIXTURES = dict.fromkeys(PYPE_FIXTURES)
 
 # --- Callback Descriptor
 
@@ -58,6 +59,7 @@ class Wrap(_SpypeBase):
     # functions for modifying how wrap instances take or puts items on queue
     _after_task_funcs = None  # functions for putting work on queue
     _before_task_funcs = None  # functions for taking work from queue
+    _predicates = None  # no predicates unless iff is called
 
     # wrap level callbacks
     on_success = _CallbackDescriptor()
@@ -95,10 +97,12 @@ class Wrap(_SpypeBase):
         return f'task wrap of {self.task}'
 
     def __call__(self, *args, _pype_fixtures=None, **kwargs):
-        fixtures = MapProxy({**(_pype_fixtures or {}), **self._wrap_fixtures,
-                             **self._partials})
+        fixtures = MapProxy({**(_pype_fixtures or EMPTY_PYPE_FIXTURES),
+                             **self._wrap_fixtures, **self._partials})
+
         out = self.task.run(*args, **kwargs, _fixtures=fixtures,
-                            _callbacks=self._callbacks)
+                            _callbacks=self._callbacks,
+                            _predicate=self._predicates)
         if out is None:
             raise TaskReturnedNone
         return args_kwargs(out, adapter=self.adapter)
@@ -137,7 +141,7 @@ class Wrap(_SpypeBase):
 
     par = partial  # alias for lazy people like myself
 
-    def iff(self, predicate: Optional[conditional_type] = None) -> 'Wrap':
+    def iff(self, predicate: Optional[predicate_type] = None) -> 'Wrap':
         """
         Register a condition that must be true for data to continue in pype.
 
@@ -151,27 +155,10 @@ class Wrap(_SpypeBase):
         -------
         Wrap
         """
-        predicate_list = list(iterate(predicate))
-        if not predicate_list:
-            return self  # do do anything for None
-        for func in iterate(predicate):  # ensure compatible signatures
-            self._check_condtion(func)
-        self.features['predicate'] = predicate
-        self.features['is_conditional'] = True
-        self._before_task_funcs = _iff
+        if predicate is not None:
+            self.features['is_conditional'] = True
+            self._predicates = predicate
         return self
-
-    def _check_condtion(self, condition: conditional_type):
-        """ format and check conditional inputs to be bound to instance """
-        # ensure we are dealing with a list of callables
-        if self.task.get_option('check_compatibility'):
-            compat = compatible_callables(self.task, condition,
-                                          func1_type='input')
-            if not compat:
-                msg = (f'run method incompatible with {condition} '
-                       f'for {self.task}')
-                raise TypeError(msg)
-        return condition
 
     def fan(self) -> 'Wrap':
         """
@@ -330,15 +317,15 @@ class Wrap(_SpypeBase):
 
 # ----------- functions to control how data is put on the queue
 
-def _iff(wrap: Wrap, inputs, _meta, que, sending_wrap=None,
-         used_functions=None):
-    """
-    Function to ensure some condition(s) are true else dont put data on queue.
-    """
-    for func in iterate(wrap.features['predicate']):
-        if not func(*inputs[0], **inputs[1]):
-            return  # if a condition fails bail out
-    wrap._queue_up(inputs, _meta, que, sending_wrap, used_functions={_iff})
+# def _iff(wrap: Wrap, inputs, _meta, que, sending_wrap=None,
+#          used_functions=None):
+#     """
+#     Function to ensure some condition(s) are true else dont put data on queue.
+#     """
+#     for func in iterate(wrap.features['predicate']):
+#         if not func(*inputs[0], **inputs[1]):
+#             return  # if a condition fails bail out
+#     wrap._queue_up(inputs, _meta, que, sending_wrap, used_functions={_iff})
 
 
 def _fan(wrap: Wrap, inputs, _meta, que, sending_wrap=None,

@@ -5,19 +5,144 @@ from collections import ChainMap
 from contextlib import suppress
 from functools import partial
 from types import MappingProxyType as MapProxy
-from typing import TypeVar, Optional, Callable, Any, Mapping, Sequence
+from typing import TypeVar, Optional, Callable, Any, Mapping
 
 from spype.constants import (FIXTURE_NAMES, CALLBACK_NAMES, PYPE_FIXTURES,
-                             WRAP_FIXTURES)
+                             WRAP_FIXTURES, callback_type, predicate_type)
 from spype.core import wrap
 from spype.core.sbase import _SpypeBase
-from spype.exceptions import ReturnCallbackValue, UnresolvedDependency, ExitTask
+from spype.exceptions import UnresolvedDependency, ExitTask
 from spype.types import valid_input, compatible_instance
 from spype.utils import (iterate, apply_partial, de_args_kwargs, copy_func,
                          get_default_names, function_or_class_name)
 
 _fixtures = {**dict.fromkeys(PYPE_FIXTURES), **dict.fromkeys(WRAP_FIXTURES)}
 EMPTY_FIXTURES = MapProxy(_fixtures)
+
+
+# --------------------------- Auxiliary tasks
+
+class _RunControl:
+    """ A class to control executing callbacks in task's run method """
+
+    _hard_exit = False
+
+    def __init__(self, task: 'Task', _fixtures, _callbacks, _predicates,
+                 args, kwargs):
+        self.task = task
+        # get fixtures passed in from wraps/pypes or use empty dicts
+        _fixtures = _fixtures or EMPTY_FIXTURES
+        self.meta = _fixtures.get('meta', {}) or {}  # meta dict from pype or {}
+        # a proxy of outputs from previous tasks
+        self.task_outputs = self.meta.get('outputs', {})
+        # get a signature and determine if type checking should happen
+        self.sig = task.get_signature()
+        # get bound arguments raise Appropriate Exceptions if bad imputs
+        self.bound = task._bind(self.sig, args, kwargs, _fixtures,
+                                self.task_outputs)
+        # create a dictionary of possible fixtures callbacks can ask for
+        self.control = dict(task=task, self=task, signature=self.sig, e=None,
+                            outputs=None, inputs=(args, kwargs), args=args,
+                            kwargs=kwargs, )
+        self.wrap_callbacks = _callbacks if _callbacks is not None else {}
+        self.wrap_predicates = list(iterate(_predicates))
+        self.fixtures = ChainMap(self.control, _fixtures)
+        self.args = args
+        self.kwargs = kwargs
+
+    def _bind_and_run(self, func: Callable):
+        """
+        Bind
+        Parameters
+        ----------
+        func
+
+        Returns
+        -------
+
+        """
+        with suppress(AttributeError):
+            func = func.__func__
+        signature = inspect.signature(func)  # callback signature
+        expected = set(signature.parameters) & set(self.sig.parameters)
+        if expected:  # callback needs parameter from args or kwargs
+            _args, _kwargs = self.bound.args, self.bound.kwargs
+            bound_args = self.sig.bind(*_args, *_kwargs).arguments
+            kwargs = {item: bound_args[item] for item in expected}
+            args = ()
+        else:
+            kwargs = self.bound.kwargs
+            args = self.bound.args
+        return apply_partial(func, partial_dict=self.fixtures, *args, **kwargs)
+
+    def _run_callback(self, name: str):
+        """ call the callbacks of type name. If a single callback is
+        defined just call it, else iterate sequence and call each """
+        if self._hard_exit:
+            return
+        ex_callbacks = self.wrap_callbacks.get(name, [])
+        task_callbacks = self.task.get_option(name)
+        func = ex_callbacks + list(iterate(task_callbacks) or [])
+
+        # set default raise if not on_failures are set
+        if not func and name == 'on_failure':
+            func = raise_exception
+
+        for callback in iterate(func):
+            # run callback
+            try:
+                out = self._bind_and_run(callback)
+            except ExitTask:
+                self.final_output = None
+            else:
+                if out is not None:
+                    self.final_output = out
+
+    def run_predicates(self):
+        """ run through each predicate and return None if not needed """
+        task_predicates = list(iterate(self.task.get_option('predicate')))
+
+        for pred in task_predicates + self.wrap_predicates:
+            # if a predicate returns a falsy value, bail out of task
+            if not self._bind_and_run(pred):
+                self.final_output = None
+
+    # ---------- properties
+
+    @property
+    def output(self):
+        return self.control['outputs']
+
+    @output.setter
+    def output(self, value):
+        if not self._hard_exit:
+            self.control['outputs'] = value
+
+    def _final_output(self, value):
+        assert not self._hard_exit, 'hard exit should not be True yet'
+        self._hard_exit = True
+        self.control['outputs'] = value
+
+    final_output = property(None, _final_output)
+
+    # --- context manager
+
+    def __enter__(self):
+        self.run_predicates()
+        self._run_callback('on_start')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_val is not None:
+            self.control['e'] = exc_val
+            self._run_callback('on_failure')
+        else:
+            self._run_callback('on_success')
+        self._run_callback('on_finish')
+        return True  # this supresses raised exceptions
+
+    def __call__(self):
+        if not self._hard_exit:
+            self.output = self.task(*self.bound.args, **self.bound.kwargs)
 
 
 # ----------------------------- Task class
@@ -105,7 +230,8 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         return function_or_class_name(self)
 
     def run(self, *args, _fixtures: Optional[Mapping[str, Any]] = None,
-            _callbacks: Optional[Sequence[Callable]]=None, **kwargs):
+            _callbacks: Optional[Mapping[str, callback_type]] = None,
+            _predicate: predicate_type = None, **kwargs):
         """
         Call the task's __call__ and handle spype magic in the background.
 
@@ -117,7 +243,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             5. Run task call method (or function)
             6. Run on_failure callback if defined and an exception was raised
             7. Run on_success callback if defined and no exception was raised
-            8. Run on_finsih callback, if defined
+            8. Run on_finish callback, if defined
             9. Return output of call method, or output of any callback if
                any non-None values were returned.
 
@@ -127,46 +253,22 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             A dict of fixtures. Keys are paramters that might be used by
             callbacks and values are the values to substitute.
         _callbacks
-            A
+            A dict of callbacks (
         """
-        # get fixtures passed in from wraps/pypes or use empty dicts
-        _fixtures = _fixtures or EMPTY_FIXTURES
-        meta = _fixtures.get('meta', {}) or {}  # meta dict from pype or {}
-        # a proxy of outputs from previous tasks
-        task_outputs = meta.get('outputs', {})
-        # get a signature and determine if type checking should happen
-        sig = self.get_signature()
-        check_type = self.get_option('check_type')
-        # get bound arguments raise Appropriate Exceptions if bad imputs
-        bound = self._bind(sig, args, kwargs, _fixtures, task_outputs)
-        out_type = self._check_inputs(bound, *args, **kwargs,
-                                      check_type=check_type)
-        # create a dictionary of possible fixtures callbacks can ask for
-        control = dict(task=self, self=self, signature=sig, e=None,
-                       outputs=None, inputs=(args, kwargs), args=args,
-                       kwargs=kwargs, )
-        fixtures = ChainMap(control, _fixtures)
-        try:
-            self._run_callbacks('on_start', fixtures, _callbacks)
-            try:
-                fixtures['outputs'] = self(*bound.args, **bound.kwargs)
-            except Exception as e:
-                fixtures['e'] = e
-                self._run_callbacks('on_failure', fixtures, _callbacks)
-            else:
-                self._run_callbacks('on_success', fixtures, _callbacks)
-            finally:
-                self._run_callbacks('on_finish', fixtures, _callbacks)
-        # if a callback returned a value or raised a
-        except ReturnCallbackValue:  # if a callback returns a value
-            pass
-        except ExitTask:
-            return
-        if meta.get('print_flow'):
-            print(f'{self.get_name()} got {(bound.args, bound.kwargs)} and '
-                  f'returned {fixtures["outputs"]}')
-        return self._check_outputs(fixtures['outputs'], out_type,
-                                   check_type=check_type)
+        # control will control will handle callbacks and predicates
+        control = _RunControl(self, _fixtures, _callbacks, _predicate,
+                              args, kwargs)
+        # fixture out which type should be returned (accounts for generics)
+        out_type = self._check_inputs(control.bound, *args, **kwargs, )
+        # run task and callbacks
+        with control:
+            control()
+        # if printing is enabled print inputs/outputs
+        if control.meta.get('print_flow'):
+            inputs = (control.bound.args, control.bound.kwargs)
+            name = self.get_name()
+            print(f'{name} got {inputs} and returned {control.output}')
+        return self._check_outputs(control.output, out_type)
 
     # --- validators
 
@@ -204,25 +306,25 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
                 raise TypeError(msg)
         return bind
 
-    def _check_inputs(self, bound, *args, check_type=True, **kwargs):
+    def _check_inputs(self, _bound, *args, **kwargs):
         """
         Ensure the inputs are of compatible types with the signature and get
         return type.
-
-        Also take into account possible fixture values.
         """
-        sig = bound.signature
-        valid = valid_input(sig, *args, bound=bound, check_type=check_type,
+        check_type = self.get_option('check_type')
+        sig = _bound.signature
+        valid = valid_input(sig, *args, bound=_bound, check_type=check_type,
                             **kwargs)
         if not valid:
             msg = (f'{args} and {kwargs} are not valid inputs for {self} '
                    f'which expects a signature of {sig}')
             raise TypeError(msg)
 
-        return _get_return_type(bound)
+        return _get_return_type(_bound)
 
-    def _check_outputs(self, out, out_type, check_type=True):
+    def _check_outputs(self, out, out_type):
         """ if out is not None, check compatibility """
+        check_type = self.get_option('check_type')
         if out is None:  # bail early on None (none always should work)
             return None
         if check_type and not compatible_instance(out, out_type):
@@ -232,38 +334,6 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         return out
 
     # --- callback stuff
-
-    def _run_callbacks(self, name: str, control: dict, _callbacks=None):
-        """ call the callbacks of type name. If a single callback is
-        defined just call it, else iterate sequence and call each """
-        ex_callbacks = [] if _callbacks is None else _callbacks.get(name, [])
-        func = ex_callbacks + list(iterate(self.get_option(name)) or [])
-
-        # set default raise if not on_failures are set
-        if not func and name == 'on_failure':
-            func = raise_exception
-
-        for callback in iterate(func):
-            # if this is a bound method, revert to unbound
-            # this enables using functions that havent defined self
-            with suppress(AttributeError):
-                callback = callback.__func__
-            # determine needed values from original task parameters
-            cb_sig = inspect.signature(callback)  # callback signature
-            expected = set(cb_sig.parameters) & set(control['signature'].parameters)
-            if expected:
-                signature = control['signature']
-                args, kwargs = control['args'], control['kwargs']
-                bound_args = signature.bind(*args, *kwargs).arguments
-                kwargs = {item: bound_args[item] for item in expected}
-            else:
-                kwargs = {}
-            # run callback
-            out = apply_partial(callback, partial_dict=control, **kwargs)
-            # if any output raise so task returns that
-            if out is not None:
-                control['outputs'] = out
-                raise ReturnCallbackValue
 
     def validate_callback(self, callback: Callable) -> None:
         """

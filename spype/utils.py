@@ -8,7 +8,7 @@ import time
 import types
 from collections import Sequence, OrderedDict
 from inspect import signature, Signature
-from typing import Optional, Callable, Tuple, Set
+from typing import Optional, Callable, Tuple, Set, Mapping
 
 from spype.constants import adapt_type, args_kwargs_type
 from spype.exceptions import NoReturnAnnotation
@@ -24,6 +24,7 @@ _SFLOW_CONTEXT = dict(
     on_finish=None,
     on_start=None,
     print_flow=False,
+    predicate=None,
 )
 
 
@@ -182,7 +183,7 @@ def partial_to_kwargs(func: Callable, *args, partial_dict: Optional[dict] = None
     return out
 
 
-def apply_partial(func: Callable, *args, partial_dict: Optional[dict] = None,
+def apply_partial(func: Callable, *args, partial_dict: Optional[Mapping] = None,
                   signature: Optional[inspect.Signature] = None, **kwargs
                   ) -> Tuple[tuple, dict]:
     """
