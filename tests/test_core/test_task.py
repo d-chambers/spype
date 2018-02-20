@@ -524,23 +524,52 @@ class TestPartials:
         assert 'is not a valid paramter' in str(e)
 
 
-class TestIff:
-    """ tests for using if statements on a task check compatibility between
-     the tasks run method and the callable(s) fed to the iff statement """
+class TestPredicates:
+    """ tests for using predicates in the task """
     _should_raise = []
     _should_not_raise = []
 
     def test_iff_fixtures(self, some_dict):
-        """ iff should use fixtures just like callbacks """
+        """ standard fixtures should be accessible through predicates """
 
         def some_iff(e, num1, pype):
             some_dict['num1'] = num1
             return True
 
-        wrap = divide_numbers.iff(some_iff)
-        wrap(1, 2)
+
+        @spype.task(predicate=some_iff)
+        def some_task(num1, num2):
+            return num1 + num2
+
+        some_task.run(1, 2)
 
         assert some_dict['num1'] == 1
+
+    def test_sequence_of_predicates(self, some_list):
+        """ passing a sequence of predicates should execute them in order
+        until one returns a falsey value """
+
+        def func1():
+            some_list.append(1)
+            return True
+
+        def func2():
+            some_list.append(2)
+            return False
+
+        def func3():
+            some_list.append(3)
+            return True
+
+        @spype.task(predicate=[func1, func2, func3])
+        def bob():
+            pass
+
+        bob.run()
+
+        assert 1 in some_list
+        assert 2 in some_list
+        assert 3 not in some_list
 
 
 class TestPypeInputWrapAndTask:

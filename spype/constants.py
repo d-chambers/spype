@@ -43,7 +43,7 @@ CALLBACK_NAMES = ('on_start', 'on_failure', 'on_success', 'on_finish')
 bool_func = Callable[..., bool]
 
 # the type expected by spype.core._wraps for conditional flow control
-predicate_type = Optional[Union[bool_func, Sequence[bool_func]]]
+predicate_type = Union[bool_func, Sequence[bool_func]]
 
 # The type for adapt argument of slflow.utils.kwargs_args
 adapt_type = Sequence[Union[str, int]]

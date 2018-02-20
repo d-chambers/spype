@@ -104,7 +104,7 @@ class _RunControl:
 
         for pred in task_predicates + self.wrap_predicates:
             # if a predicate returns a falsy value, bail out of task
-            if not self._bind_and_run(pred):
+            if not self._hard_exit and not self._bind_and_run(pred):
                 self.final_output = None
 
     # ---------- properties
@@ -422,10 +422,11 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
 
 
 def task(func: Optional[Callable] = None, *,
-         on_start: Optional[Callable] = None,
-         on_failure: Optional[Callable] = None,
-         on_success: Optional[Callable] = None,
-         on_finish: Optional[Callable] = None,
+         on_start: Optional[callback_type] = None,
+         on_failure: Optional[callback_type] = None,
+         on_success: Optional[callback_type] = None,
+         on_finish: Optional[callback_type] = None,
+         predicate: Optional[predicate_type] = None,
          **kwargs) -> Task:
     """
     Decorator for registering a callable as a tasks.
@@ -456,8 +457,9 @@ def task(func: Optional[Callable] = None, *,
     """
     # handle called decorator (ie no function passed yet)
     if func is None:
-        return partial(task, on_failure=on_failure, on_success=on_success,
-                       on_finish=on_finish, on_start=on_start, kwargs=kwargs)
+        locs = locals()
+        locs.pop('func')
+        return partial(task, **locs)
 
     for name, item in Task.__dict__.items():
         if callable(item):
