@@ -109,10 +109,10 @@ class TestWrapCallbacks:
         """ return a wrap with two callbacks that write to some dict """
 
         def on_start(a, b):
-            some_dict['on_start'] = ((a, b))
+            some_dict["on_start"] = (a, b)
 
         def on_finish(b):
-            some_dict['on_finish'] = b
+            some_dict["on_finish"] = b
 
         return add_two.wrap(on_start=on_start, on_finish=on_finish)
 
@@ -121,8 +121,8 @@ class TestWrapCallbacks:
 
         callback_wrap(1, 2)
 
-        assert some_dict['on_start'] == (1, 2)
-        assert some_dict['on_finish'] == 2
+        assert some_dict["on_start"] == (1, 2)
+        assert some_dict["on_finish"] == 2
 
     def test_get_callback(self, callback_wrap):
         """ tests for the descriptor getters """

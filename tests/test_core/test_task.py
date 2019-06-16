@@ -129,7 +129,7 @@ def _task_from_closure():
     return any_to_str
 
 
-_type = TypeVar('int_float_str', list, int, float, str)
+_type = TypeVar("int_float_str", list, int, float, str)
 
 
 @function_task
@@ -166,17 +166,17 @@ class TestClassTasks:
         """ return a class with callbacks """
 
         def on_success_one(outputs):
-            some_list.append('on_success_one called')
+            some_list.append("on_success_one called")
 
         def on_success_two(outputs):
-            some_list.append('on_success_two called')
+            some_list.append("on_success_two called")
 
         class TimeTwo(spype.core.task.Task):
             def on_failure(self):
-                some_list.append('on_fail called')
+                some_list.append("on_fail called")
 
             def on_finish(self):
-                some_list.append('on_finish called')
+                some_list.append("on_finish called")
 
             on_success = [on_success_one, on_success_two]
 
@@ -191,6 +191,7 @@ class TestClassTasks:
         """ insure defining a task without a __call__ raises a type error """
 
         with pytest.raises(TypeError):
+
             class BadTask(Task):
                 pass
 
@@ -198,6 +199,7 @@ class TestClassTasks:
         """ tasks cannot define the run method, raise if they do """
 
         with pytest.raises(TypeError):
+
             class BadTask(Task):
                 def run(self):
                     pass
@@ -212,15 +214,15 @@ class TestClassTasks:
     def test_callbacks(self, some_list, callback_class):
         """ test that the fail and finish callbacks go off """
         callback_class().run(None)
-        assert 'on_fail called' == some_list[0]
-        assert 'on_finish called' == some_list[1]
+        assert "on_fail called" == some_list[0]
+        assert "on_finish called" == some_list[1]
 
     def test_list_of_callbacks(self, some_list, callback_class):
         """ test that multiple callbacks get called when in list """
         callback_class().run(1)
         assert len(some_list) == 3
-        assert 'on_success_one called' == some_list[0]
-        assert 'on_success_two called' == some_list[1]
+        assert "on_success_one called" == some_list[0]
+        assert "on_success_two called" == some_list[1]
 
 
 class TestDecoratorTask:
@@ -232,10 +234,10 @@ class TestDecoratorTask:
         """ test a decorator task with an on_fail and on_finish method """
 
         def on_failure(task, e, *args, **kwargs):
-            some_list.append('on_fail called')
+            some_list.append("on_fail called")
 
         def on_finish(task, outputs, *args, **kwargs):
-            some_list.append('on_finish called')
+            some_list.append("on_finish called")
 
         @task(on_finish=on_finish, on_failure=on_failure)
         def raise_value_error(obj):
@@ -251,10 +253,10 @@ class TestDecoratorTask:
         """ test a decorator task with an on_fail and on_finish method """
 
         def on_fail1(task, e, *args, **kwargs):
-            some_list.append('on_fail called first')
+            some_list.append("on_fail called first")
 
         def on_fail2(task, e, *args, **kwargs):
-            some_list.append('on_fail called second')
+            some_list.append("on_fail called second")
 
         @task(on_failure=[on_fail1, on_fail2])
         def raise_value_error(obj):
@@ -271,15 +273,15 @@ class TestDecoratorTask:
     def test_callbacks(self, some_list, task_fail_and_finish):
         """ test that the fail and finish callbacks go off """
         task_fail_and_finish.run(1)
-        assert 'on_fail called' == some_list[0]
-        assert 'on_finish called' == some_list[1]
+        assert "on_fail called" == some_list[0]
+        assert "on_finish called" == some_list[1]
 
     def test_list_of_callbacks(self, task_multiple_callbacks, some_list):
         """ test that multiple callbacks get called when in list """
         task_multiple_callbacks.run(1)
         assert len(some_list) == 2
-        assert 'on_fail called first' == some_list[0]
-        assert 'on_fail called second' == some_list[1]
+        assert "on_fail called first" == some_list[0]
+        assert "on_fail called second" == some_list[1]
 
     def test_signatures(self):
         """ ensure signatures of run methods are the same for class and
@@ -292,11 +294,13 @@ class TestDecoratorTask:
     def test_func_with_self_doesnt_raise(self):
         """ ensure a function that uses self doesn't raise """
         try:
+
             @task
             def func(self, a, b):
                 pass
+
         except Exception:
-            pytest.fail('valid function failed')
+            pytest.fail("valid function failed")
 
 
 class TestTasks:
@@ -319,7 +323,7 @@ class TestTasks:
     def test_wrap_functions(self, generic_task):
         """ certain attributes should wrap the task and return it """
         attrs_to_test = list(Wrap._wrap_funcs)
-        attrs_to_test.remove('compatible')
+        attrs_to_test.remove("compatible")
         for attr in attrs_to_test:
             try:
                 wrap = getattr(generic_task, attr)()
@@ -334,6 +338,7 @@ class TestTasks:
 
 class TestTaskCompatibility:
     """ tests for checking if tasks are compatible """
+
     # fixtures
 
     # lists of compatible and incompatible tasks
@@ -344,18 +349,15 @@ class TestTaskCompatibility:
         (str2int, int2str),
     )
 
-    incompatible_tasks = (
-        (int2str, divide_ints),
-        (int2str, plus_one_plus_two),
-    )
+    incompatible_tasks = ((int2str, divide_ints), (int2str, plus_one_plus_two))
 
     # general tests
-    @pytest.mark.parametrize('task1, task2', compatible_tasks)
+    @pytest.mark.parametrize("task1, task2", compatible_tasks)
     def test_compatible(self, task1, task2):
         """ ensure task1 and task2 are compatible """
         assert task1.compatible(task2)
 
-    @pytest.mark.parametrize('task1, task2', incompatible_tasks)
+    @pytest.mark.parametrize("task1, task2", incompatible_tasks)
     def test_not_compatible(self, task1, task2):
         """ ensure task1 outputs are valid inputs to task2 """
         assert not task1.compatible(task2)
@@ -365,7 +367,7 @@ class TestTaskCompatibility:
 
 class TestTypeEnforcement:
     # fixtures
-    @pytest.fixture(scope='class', autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     def ensure_type_check_is_on(self):
         """ ensure type checking is on for task input/ouput for this suite of
          tests """
@@ -390,7 +392,7 @@ class TestTypeEnforcement:
     @pytest.fixture
     def task_with_typevar(self):
         """ return task with typevar """
-        TV = TypeVar('TV', int, float, str)
+        TV = TypeVar("TV", int, float, str)
 
         @spype.core.task.task
         def add_to_self(obj: TV) -> TV:
@@ -418,7 +420,7 @@ class TestTypeEnforcement:
         """ a task that gives a bad output should raise type error """
         # feeding it a str should raise (it expects int)
         with pytest.raises(TypeError):
-            task_bad_output.run('hey')
+            task_bad_output.run("hey")
 
         # when it tries to return a str it should raise (stated as int)
         with pytest.raises(TypeError):
@@ -430,7 +432,7 @@ class TestTypeEnforcement:
         try:
             task_with_typevar.run(10)
         except Exception:
-            pytest.fail('this should not fail')
+            pytest.fail("this should not fail")
 
         with pytest.raises(TypeError):
             task_with_typevar.run(13)
@@ -451,7 +453,7 @@ class TestTypeEnforcement:
             return int(a)
 
         with suppress(TypeError):
-            int_in_int_out.run('a')
+            int_in_int_out.run("a")
 
         assert len(some_list) == 0
 
@@ -463,6 +465,7 @@ class TestValidateCallbacks:
     def test_defining_bad_callback_on_task_subclass_rasies(self):
         """ ensure defining a bad callback in a class definintion raises """
         with pytest.raises(TypeError) as e:
+
             class BadCallback(spype.core.task.Task):
                 def __call__(self):
                     pass
@@ -471,7 +474,7 @@ class TestValidateCallbacks:
                     pass
 
             BadCallback().validate_callbacks()
-        assert 'not a valid parameter names' in str(e)
+        assert "not a valid parameter names" in str(e)
 
     def test_call_params_are_ok(self):
         """ ensure any parameter names in call method are not flagged as
@@ -487,7 +490,7 @@ class TestValidateCallbacks:
         try:
             some_task.validate_callbacks()
         except TypeError:
-            pytest.fail('should not raise on valid call parameters')
+            pytest.fail("should not raise on valid call parameters")
 
 
 class TestPartials:
@@ -521,11 +524,12 @@ class TestPartials:
         a TypeError"""
         with pytest.raises(TypeError) as e:
             divide_numbers.partial(bob=2)
-        assert 'is not a valid paramter' in str(e)
+        assert "is not a valid paramter" in str(e)
 
 
 class TestPredicates:
     """ tests for using predicates in the task """
+
     _should_raise = []
     _should_not_raise = []
 
@@ -533,7 +537,7 @@ class TestPredicates:
         """ standard fixtures should be accessible through predicates """
 
         def some_iff(e, num1, pype):
-            some_dict['num1'] = num1
+            some_dict["num1"] = num1
             return True
 
         @spype.task(predicate=some_iff)
@@ -542,7 +546,7 @@ class TestPredicates:
 
         some_task.run(1, 2)
 
-        assert some_dict['num1'] == 1
+        assert some_dict["num1"] == 1
 
     def test_sequence_of_predicates(self, some_list):
         """ passing a sequence of predicates should execute them in order
@@ -599,16 +603,16 @@ class TestCallbacksInDepth:
         # attach callbacks in task class
         class StrToInt(spype.core.task.Task):
             def __call__(self, obj: str) -> int:
-                if obj == '13':
-                    raise ValueError('unlucky numbers not accepted')
+                if obj == "13":
+                    raise ValueError("unlucky numbers not accepted")
                 return None
 
             def on_failure(self, inputs):
                 out.append(inputs)
 
         str_to_int = StrToInt()
-        str_to_int.run('13')
-        assert (('13',), {}) in out
+        str_to_int.run("13")
+        assert (("13",), {}) in out
 
     def test_class_tasks_raise_on_default(self):
         """ make sure when no callbacks are defined the task still raises on
@@ -620,7 +624,7 @@ class TestCallbacksInDepth:
 
         dumbtask = DumbTask()
         with pytest.raises(ValueError):
-            dumbtask.run('bob')
+            dumbtask.run("bob")
 
     def test_decorator_task_raise_on_default(self):
         """ ensure the decorator task rasies by default when to on_failure
@@ -631,7 +635,7 @@ class TestCallbacksInDepth:
             return float(obj)
 
         with pytest.raises(ValueError):
-            dumbtask.run('bob')
+            dumbtask.run("bob")
 
     def test_decorator_task_on_can_be_skipped(self):
         """ ensure defining a custom on_fail overrides the default """
@@ -644,9 +648,9 @@ class TestCallbacksInDepth:
             return float(obj)
 
         try:
-            dumbtask.run('hey')
+            dumbtask.run("hey")
         except ValueError:
-            pytest.fail('should not raise')
+            pytest.fail("should not raise")
 
     def test_on_start(self):
         """ ensure on_start can be used to get input args """
@@ -668,7 +672,7 @@ class TestCallbacksInDepth:
 
         # define an on_finish callback that will raise
         def raise_some_error():
-            raise ValueError('some error')
+            raise ValueError("some error")
 
         # some simple task
         @spype.core.task.task
@@ -679,10 +683,10 @@ class TestCallbacksInDepth:
         try:
             passit.run()
         except ValueError:
-            pytest.fail('should not raise')
+            pytest.fail("should not raise")
 
         # monkey patch the on_finish callback to the Task class
-        monkeypatch.setattr(spype.core.task.Task, 'on_finish', raise_some_error)
+        monkeypatch.setattr(spype.core.task.Task, "on_finish", raise_some_error)
 
         # ensure it raises
         with pytest.raises(ValueError):
@@ -693,41 +697,46 @@ class TestCallbacksInDepth:
         out = {}
 
         def on_failure(a, c):
-            out['on_failure'] = (a, c)
+            out["on_failure"] = (a, c)
 
         def on_start(task, a):
-            out['on_start'] = (task, a)
+            out["on_start"] = (task, a)
 
         def on_success(c):
-            out['on_success'] = c
+            out["on_success"] = c
 
         def on_finish(outputs):
-            out['on_finish'] = outputs
+            out["on_finish"] = outputs
 
-        @task(on_failure=on_failure, on_success=on_success, on_start=on_start,
-              on_finish=on_finish)
+        @task(
+            on_failure=on_failure,
+            on_success=on_success,
+            on_start=on_start,
+            on_finish=on_finish,
+        )
         def some_task(a, b, c=None):
             return a + b
 
-        some_task.run(1, 2, 'bob')
+        some_task.run(1, 2, "bob")
 
-        assert out['on_start'] == (some_task, 1)
-        assert out['on_success'] == 'bob'
-        assert out['on_finish'] == 3
+        assert out["on_start"] == (some_task, 1)
+        assert out["on_success"] == "bob"
+        assert out["on_finish"] == 3
 
-        some_task.run('a', 1, 'hey')
+        some_task.run("a", 1, "hey")
 
-        assert out['on_failure'] == ('a', 'hey')
+        assert out["on_failure"] == ("a", "hey")
 
     combos = itertools.product(CALLBACK_NAMES, tuple(FIXTURE_NAMES))
 
-    @pytest.mark.parametrize('callback, fixture', combos)
+    @pytest.mark.parametrize("callback, fixture", combos)
     def test_task_fixtures(self, callback, fixture):
         """ ensure each of the supported task fixtures works """
 
         # define dynamic function requesting particular callback
-        str_func = (f'def _dynamic_func({fixture}):\n'
-                    f'    _dhack["{fixture}"] = {fixture}')
+        str_func = (
+            f"def _dynamic_func({fixture}):\n" f'    _dhack["{fixture}"] = {fixture}'
+        )
         exec(str_func, globals())
 
         # define normal and failing tasks
@@ -737,10 +746,10 @@ class TestCallbacksInDepth:
 
         @spype.task(**{callback: _dynamic_func})
         def fail_task():
-            raise ValueError('I fail at everything... sad!')
+            raise ValueError("I fail at everything... sad!")
 
         # figure out which tasks to run
-        if callback == 'on_failure':
+        if callback == "on_failure":
             fail_task.run()
         else:
             normal_task.run()
@@ -753,7 +762,7 @@ class TestCallbacksInDepth:
         """ raising a ExitTask exception in a callback should result in """
 
         def stop_task():
-            raise ExitTask('get outta here')
+            raise ExitTask("get outta here")
 
         @spype.task(on_finish=stop_task)
         def some_task():
@@ -775,19 +784,19 @@ class TestCallbackReturnValues:
         return_int.on_failure = lambda: 3
 
         assert return_int.run(2) == 2
-        assert return_int.run('2') == 2
-        assert return_int.run('bb') == 3
+        assert return_int.run("2") == 2
+        assert return_int.run("bb") == 3
 
-        return_int.on_success = lambda: 'two'
+        return_int.on_success = lambda: "two"
 
-        assert return_int.run(1) == 'two'
-        assert return_int.run('2') == 'two'
-        assert return_int.run('bob') == 3
+        assert return_int.run(1) == "two"
+        assert return_int.run("2") == "two"
+        assert return_int.run("bob") == 3
 
-        return_int.on_start = lambda: 'java sucks'
-        assert return_int.run(1) == 'java sucks'
-        assert return_int.run(22) == 'java sucks'
-        assert return_int.run('bob') == 'java sucks'
+        return_int.on_start = lambda: "java sucks"
+        assert return_int.run(1) == "java sucks"
+        assert return_int.run(22) == "java sucks"
+        assert return_int.run("bob") == "java sucks"
 
     def test_callback_execution(self):
         """ as soon as a callback returns a value it should be returned right
@@ -795,11 +804,11 @@ class TestCallbackReturnValues:
         out = {}
 
         def on_start():
-            out['on_start'] = True
+            out["on_start"] = True
             return 1
 
         def on_finish():
-            out['on_finish'] = True
+            out["on_finish"] = True
             return 2
 
         @task(on_start=on_start, on_finish=on_finish)
@@ -807,4 +816,4 @@ class TestCallbackReturnValues:
             pass
 
         assert some_task.run() == 1
-        assert 'on_finish' not in out
+        assert "on_finish" not in out

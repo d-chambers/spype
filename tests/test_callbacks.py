@@ -17,7 +17,7 @@ from spype.exceptions import InvalidPype
 
 @pytest.fixture
 def report_file():
-    with tempfile.NamedTemporaryFile(suffix='.csv') as fi:
+    with tempfile.NamedTemporaryFile(suffix=".csv") as fi:
         yield fi.name
 
 
@@ -38,7 +38,7 @@ class TestLogOnFailWithPype:
 
         @task
         def raise_value_error(num):
-            raise ValueError(f'I dont like this number {num}')
+            raise ValueError(f"I dont like this number {num}")
 
         pype = pype_input | add_one | raise_value_error
         return pype
@@ -47,14 +47,14 @@ class TestLogOnFailWithPype:
     def pype_raise_on_fail(self, pype, report_file):
         """ add the log_on_fail callback to pype """
         on_fail = log_on_fail(report_file, re_raise=True)
-        return pype.add_callback(on_fail, 'on_failure')
+        return pype.add_callback(on_fail, "on_failure")
 
     @pytest.fixture
     def pype_no_raise_on_fail(self, pype, report_file):
         """ add the log_on_fail callback, don't reraise"""
         on_fail = log_on_fail(report_file, re_raise=False)
-        pype.register('test_on_fail')  # register pype
-        pype = pype.add_callback(on_fail, 'on_failure')
+        pype.register("test_on_fail")  # register pype
+        pype = pype.add_callback(on_fail, "on_failure")
         # trigger pype to cause failure and writting to log
         pype(2)
         return pype
@@ -67,12 +67,12 @@ class TestLogOnFailWithPype:
 
     def test_reraise(self, pype_raise_on_fail):
         """ ensure the exception is re-raised if reraise was set to True """
-        pype_raise_on_fail.register('bob')
+        pype_raise_on_fail.register("bob")
 
         with pytest.raises(ValueError) as e:
             pype_raise_on_fail(2)
 
-        assert 'I dont like' in str(e)
+        assert "I dont like" in str(e)
 
     def test_log_created(self, pype_no_raise_on_fail, report_file):
         """ ensure the report file exists and has the current pype in it """
@@ -80,6 +80,6 @@ class TestLogOnFailWithPype:
         assert os.path.exists(report_file)
         contents = open(report_file).readlines()
         assert contents
-        assert contents[0][:-1] == ', '.join(list(FAILURE_LOG_COLUMNS))
-        failure = contents[1].split(', ')
+        assert contents[0][:-1] == ", ".join(list(FAILURE_LOG_COLUMNS))
+        failure = contents[1].split(", ")
         assert failure[0] == pype_no_raise_on_fail.name

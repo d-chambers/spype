@@ -13,9 +13,14 @@ from spype.core import task
 from spype.core.sbase import _SpypeBase
 from spype.exceptions import TaskReturnedNone, NoReturnAnnotation
 from spype.types import valid_input
-from spype.utils import (args_kwargs, iterate, de_args_kwargs,
-                         partial_to_kwargs, sig_to_args_kwargs,
-                         function_or_class_name)
+from spype.utils import (
+    args_kwargs,
+    iterate,
+    de_args_kwargs,
+    partial_to_kwargs,
+    sig_to_args_kwargs,
+    function_or_class_name,
+)
 
 EMPTY_PYPE_FIXTURES = dict.fromkeys(PYPE_FIXTURES)
 
@@ -48,12 +53,12 @@ class Wrap(_SpypeBase):
     """
 
     # wrap attributes that can be used to alter flow of data
-    _wrap_funcs = ('iff', 'fan', 'agg', 'partial', 'fit', 'compatible')
+    _wrap_funcs = ("iff", "fan", "agg", "partial", "fit", "compatible")
 
     # supported features
-    _in_edge_labels = {'is_conditional', 'is_aggregate'}
-    _out_edge_labels = {'is_fan'}
-    _fnames = {'predicate', 'adapter', 'aggregate_on', 'dependencies'}
+    _in_edge_labels = {"is_conditional", "is_aggregate"}
+    _out_edge_labels = {"is_fan"}
+    _fnames = {"predicate", "adapter", "aggregate_on", "dependencies"}
     _feature_names = frozenset(_in_edge_labels | _fnames | _out_edge_labels)
 
     # functions for modifying how wrap instances take or puts items on queue
@@ -69,7 +74,7 @@ class Wrap(_SpypeBase):
 
     pype = None
 
-    def __init__(self, task: 'task.Task', **kwargs):
+    def __init__(self, task: "task.Task", **kwargs):
         # if a wrap is fed to init just strip out task
         if isinstance(task, Wrap):
             self.__dict__.update(task.__dict__)
@@ -78,31 +83,40 @@ class Wrap(_SpypeBase):
             self.task = task
             # a dict that stores features of wrap
             self.features = dict.fromkeys(self._feature_names)
-            self.features['dependencies'] = []
+            self.features["dependencies"] = []
             # set callbacks on the wrap level
             self._callbacks = {cb_name: list() for cb_name in CALLBACK_NAMES}
-            for callback in (set(kwargs) & set(CALLBACK_NAMES)):
+            for callback in set(kwargs) & set(CALLBACK_NAMES):
                 setattr(self, callback, kwargs.pop(callback))
             # setup dependencies
-            self.session_fixtures = {'wrap': self}  # fixtures that dont change
+            self.session_fixtures = {"wrap": self}  # fixtures that dont change
             # dependencies that change for each object {param_name: task}
             self._partials = {}
             # functions that modify how objects are queued
             self._get_queue_func = None
             self._put_queue_func = None
             self.adapter = None  # todo get rid of this
-            assert not len(kwargs), f'{kwargs} are not supported arguments'
+            assert not len(kwargs), f"{kwargs} are not supported arguments"
 
     def __repr__(self):
-        return f'task wrap of {self.task}'
+        return f"task wrap of {self.task}"
 
     def __call__(self, *args, _pype_fixtures=None, **kwargs):
-        fixtures = MapProxy({**(_pype_fixtures or EMPTY_PYPE_FIXTURES),
-                             **self._wrap_fixtures, **self._partials})
+        fixtures = MapProxy(
+            {
+                **(_pype_fixtures or EMPTY_PYPE_FIXTURES),
+                **self._wrap_fixtures,
+                **self._partials,
+            }
+        )
 
-        out = self.task.run(*args, **kwargs, _fixtures=fixtures,
-                            _callbacks=self._callbacks,
-                            _predicate=self._predicates)
+        out = self.task.run(
+            *args,
+            **kwargs,
+            _fixtures=fixtures,
+            _callbacks=self._callbacks,
+            _predicate=self._predicates,
+        )
         if out is None:
             raise TaskReturnedNone
         return args_kwargs(out, adapter=self.adapter)
@@ -120,7 +134,7 @@ class Wrap(_SpypeBase):
 
     # --- methods for adding features to wraps
 
-    def partial(self, **kwargs) -> 'Wrap':
+    def partial(self, **kwargs) -> "Wrap":
         """
         Set values for paramters.
 
@@ -130,18 +144,20 @@ class Wrap(_SpypeBase):
         """
         for item, val in kwargs.items():
             if item not in self.signature.parameters:
-                msg = (f'{item} is not a valid paramter of {self.task_name}, '
-                       f'valid parameters are {set(self.signature.parameters)}')
+                msg = (
+                    f"{item} is not a valid paramter of {self.task_name}, "
+                    f"valid parameters are {set(self.signature.parameters)}"
+                )
                 raise TypeError(msg)
             if isinstance(val, task.Task):
                 # add task to list of dependencies
-                self.features['dependencies'].append(val)
+                self.features["dependencies"].append(val)
             self._partials[item] = val
         return self
 
     par = partial  # alias for lazy people like myself
 
-    def iff(self, predicate: Optional[predicate_type] = None) -> 'Wrap':
+    def iff(self, predicate: Optional[predicate_type] = None) -> "Wrap":
         """
         Register a condition that must be true for data to continue in pype.
 
@@ -156,23 +172,23 @@ class Wrap(_SpypeBase):
         Wrap
         """
         if predicate is not None:
-            self.features['is_conditional'] = True
+            self.features["is_conditional"] = True
             self._predicates = predicate
         return self
 
-    def fan(self) -> 'Wrap':
+    def fan(self) -> "Wrap":
         """
         Mark Wrap as fanning out.
 
         This will cause it to iterate output and queue one item at a time.
         """
         self._before_task_funcs = _fan
-        self.features['is_fan'] = True
+        self.features["is_fan"] = True
         # TODO make function to strip sequence rather than disable type_check
         self.check_type = False
         return self
 
-    def agg(self, scope='object') -> 'Wrap':
+    def agg(self, scope="object") -> "Wrap":
         """
         Mark wrap as aggregating output from input tasks.
 
@@ -180,7 +196,7 @@ class Wrap(_SpypeBase):
         this task when it is done.
         """
         self._before_task_funcs = partial(_aggregate, scope=scope)
-        self.features['is_aggregate'] = True
+        self.features["is_aggregate"] = True
         return self
 
     def fit(self, *args):
@@ -200,13 +216,14 @@ class Wrap(_SpypeBase):
         Wrap instance
         """
         if len(args):
-            self.features['adapter'] = args
+            self.features["adapter"] = args
         return self
 
     # --- validation machinery
 
-    def compatible(self, other: Union['task.Task', 'Wrap'],
-                   extra_params: Optional[Mapping] = None) -> bool:
+    def compatible(
+        self, other: Union["task.Task", "Wrap"], extra_params: Optional[Mapping] = None
+    ) -> bool:
         """
         Return True if self (current wrap) provides valid inputs for other.
 
@@ -224,7 +241,7 @@ class Wrap(_SpypeBase):
             other = other.wrap()  # ensure we are working with a wrap
         if not isinstance(other, Wrap):
             return False
-        adapter = self.features.get('adapter', None)
+        adapter = self.features.get("adapter", None)
         try:
             args, kwargs = sig_to_args_kwargs(self.signature, adapter)
         except NoReturnAnnotation:  # if there is no return annotation
@@ -261,8 +278,7 @@ class Wrap(_SpypeBase):
 
     # --- methods for controlling how data flow through wrap
 
-    def _queue_up(self, inputs, _meta, que, sending_wrap=None,
-                  used_functions=None):
+    def _queue_up(self, inputs, _meta, que, sending_wrap=None, used_functions=None):
         """
         Add this task onto que with given inputs.
 
@@ -281,13 +297,13 @@ class Wrap(_SpypeBase):
         # current no after funcs should be un-used
         assert not (after_funcs - used_funcs)
         # if there are funcs to call before allowing task to operate on data
-        if (before_funcs - used_funcs):
-            for func in (before_funcs - used_funcs):
+        if before_funcs - used_funcs:
+            for func in before_funcs - used_funcs:
                 func(self, inputs, _meta, que, sending_wrap, used_funcs)
             return
         que.append((self, inputs))  # else just do the normal thing
 
-    def copy(self) -> 'Wrap':
+    def copy(self) -> "Wrap":
         return deepcopy(self)
 
     @property
@@ -298,7 +314,7 @@ class Wrap(_SpypeBase):
     @property
     def conditional_name(self):
         """ return the name of the predicate, else None """
-        return function_or_class_name(self.features['predicate'])
+        return function_or_class_name(self.features["predicate"])
 
     @property
     def _in_edge_lab(self) -> set:
@@ -328,27 +344,35 @@ class Wrap(_SpypeBase):
 #     wrap._queue_up(inputs, _meta, que, sending_wrap, used_functions={_iff})
 
 
-def _fan(wrap: Wrap, inputs, _meta, que, sending_wrap=None,
-         used_functions=None):
+def _fan(wrap: Wrap, inputs, _meta, que, sending_wrap=None, used_functions=None):
     """ fan out the output of sending task """
     for val in reversed(de_args_kwargs(*inputs)):
-        wrap._queue_up(args_kwargs(val), _meta, que, sending_wrap,
-                       used_functions={_fan})
+        wrap._queue_up(
+            args_kwargs(val), _meta, que, sending_wrap, used_functions={_fan}
+        )
 
 
-def _aggregate(wrap: Wrap, inputs, _meta, que, sending_wrap=None,
-               used_functions=None, scope='object'):
+def _aggregate(
+    wrap: Wrap,
+    inputs,
+    _meta,
+    que,
+    sending_wrap=None,
+    used_functions=None,
+    scope="object",
+):
     """ aggregate outputs coming from sending wrap to call on warp """
     # determine if aggregation has taken place yet
-    if not _meta[scope + '_scope_finished']:
+    if not _meta[scope + "_scope_finished"]:
         # if not aggregate and exit
-        _meta[scope + '_scope_map'][wrap] = sending_wrap
+        _meta[scope + "_scope_map"][wrap] = sending_wrap
         puts = de_args_kwargs(*inputs)
         _meta[scope + "_aggregates"][sending_wrap].append(puts)
         return
 
 
 # -------------------- misc wrap functions
+
 
 def _compatible_extra(sig, args, kwargs, extra_params, check_type):
     """
@@ -368,6 +392,7 @@ def _compatible_extra(sig, args, kwargs, extra_params, check_type):
             partials[common] = Wrap(new).signature.return_annotation
         else:  # else this is the desired value, just get the type
             partials[common] = type(new)
-    new_kwargs = partial_to_kwargs(None, *args, partial_dict=partials,
-                                   signature=sig, **kwargs)
+    new_kwargs = partial_to_kwargs(
+        None, *args, partial_dict=partials, signature=sig, **kwargs
+    )
     return valid_input(sig, check_type=check_type, **new_kwargs)

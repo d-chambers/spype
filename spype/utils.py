@@ -50,8 +50,10 @@ class Context:
         """
         if not set(kwargs).issubset(self._dict):
             diff = set(kwargs) - set(self._dict)
-            msg = (f'unsupported option(s): {diff} passed to set_options. '
-                   f'supported uptions are {set(self._dict)}')
+            msg = (
+                f"unsupported option(s): {diff} passed to set_options. "
+                f"supported uptions are {set(self._dict)}"
+            )
             raise KeyError(msg)
 
         if _save_state:
@@ -93,7 +95,7 @@ class FileLock(object):
     File lock based on https://github.com/dmfrey/FileLock
     """
 
-    def __init__(self, file_path, timeout=10, delay=.1):
+    def __init__(self, file_path, timeout=10, delay=0.1):
         """ Prepare the file locker. Specify the file to lock and optionally
             the maximum timeout and the delay between each attempt to lock.
         """
@@ -108,8 +110,8 @@ class FileLock(object):
 
     def lock(self):
         """ create the lock file """
-        with open(self.lockfile, 'w') as fi:
-            fi.write('occupied')
+        with open(self.lockfile, "w") as fi:
+            fi.write("occupied")
 
     def release(self):
         """ release the lock """
@@ -129,7 +131,7 @@ class FileLock(object):
                 self.lock()
                 break
         else:
-            msg = f'{self.lockfile} still exists after {self.timeout} seconds'
+            msg = f"{self.lockfile} still exists after {self.timeout} seconds"
             raise IOError(msg)
 
     def __enter__(self):
@@ -155,9 +157,13 @@ class FileLock(object):
 # ------------------------- function jiggering
 
 
-def partial_to_kwargs(func: Callable, *args, partial_dict: Optional[dict] = None,
-                      signature: Optional[inspect.Signature] = None, **kwargs
-                      ) -> dict:
+def partial_to_kwargs(
+    func: Callable,
+    *args,
+    partial_dict: Optional[dict] = None,
+    signature: Optional[inspect.Signature] = None,
+    **kwargs,
+) -> dict:
     """
     Return a kwargs dict compatible with function or siganture.
 
@@ -173,8 +179,13 @@ def partial_to_kwargs(func: Callable, *args, partial_dict: Optional[dict] = None
     """
     out = dict(kwargs)
     sig = signature or inspect.signature(func)
-    argd = OrderedDict(((item, value) for item, value in sig.parameters.items()
-                        if item not in partial_dict))
+    argd = OrderedDict(
+        (
+            (item, value)
+            for item, value in sig.parameters.items()
+            if item not in partial_dict
+        )
+    )
     # first bind new args taking out any that are also found in partial_dict
     out.update({name: value for name, value in zip(argd, args)})
     # get kwargs to bind
@@ -183,9 +194,13 @@ def partial_to_kwargs(func: Callable, *args, partial_dict: Optional[dict] = None
     return out
 
 
-def apply_partial(func: Callable, *args, partial_dict: Optional[Mapping] = None,
-                  signature: Optional[inspect.Signature] = None, **kwargs
-                  ) -> Tuple[tuple, dict]:
+def apply_partial(
+    func: Callable,
+    *args,
+    partial_dict: Optional[Mapping] = None,
+    signature: Optional[inspect.Signature] = None,
+    **kwargs,
+) -> Tuple[tuple, dict]:
     """
     Call func with args and kwargs, supersede with partial_dict.
 
@@ -208,16 +223,16 @@ def apply_partial(func: Callable, *args, partial_dict: Optional[Mapping] = None,
     """
     if not partial_dict:  # bail out if no special binding to perform
         return func(*args, **kwargs)
-    out = partial_to_kwargs(func, *args, partial_dict=partial_dict,
-                            signature=signature, **kwargs)
+    out = partial_to_kwargs(
+        func, *args, partial_dict=partial_dict, signature=signature, **kwargs
+    )
     return func(**out)
 
 
 # --------------------- Args and Kwargs Wrangling
 
 
-def args_kwargs(output, adapter: Optional[adapt_type] = None
-                ) -> args_kwargs_type:
+def args_kwargs(output, adapter: Optional[adapt_type] = None) -> args_kwargs_type:
     """
     Take the output of a function and turn it into args and kwargs.
 
@@ -239,8 +254,9 @@ def args_kwargs(output, adapter: Optional[adapt_type] = None
         output = (output,)
     if adapter is None:
         return tuple(output), {}
-    assert len(adapter) == len(output), (
-        f'adapter {adapter} and output {output} have different lengths')
+    assert len(adapter) == len(
+        output
+    ), f"adapter {adapter} and output {output} have different lengths"
     # wrangle output into a tuple and a dict based on adapter
     return _apply_adapter(output, adapter)
 
@@ -274,12 +290,16 @@ def get_default_names(sig: inspect.Signature) -> Set[str]:
     """
     Return a set of parameter names that have default values.
     """
-    return {key for key, value in sig.parameters.items()
-            if value.default is not inspect._empty}
+    return {
+        key
+        for key, value in sig.parameters.items()
+        if value.default is not inspect._empty
+    }
 
 
-def sig_to_args_kwargs(sig: inspect.Signature,
-                       adapter: Optional[tuple] = None) -> (tuple, dict):
+def sig_to_args_kwargs(
+    sig: inspect.Signature, adapter: Optional[tuple] = None
+) -> (tuple, dict):
     """
     Return an tuple of args and kwargs of types for signature return type.
 
@@ -338,12 +358,13 @@ def function_or_class_name(obj):
 
 
 def copy_func(f, name=None):
-    '''
+    """
     return a function with same code, globals, defaults, closure, and
     name (or provide a new name)
-    '''
-    fn = types.FunctionType(f.__code__, f.__globals__, name or f.__name__,
-                            f.__defaults__, f.__closure__)
+    """
+    fn = types.FunctionType(
+        f.__code__, f.__globals__, name or f.__name__, f.__defaults__, f.__closure__
+    )
     # in case f was given attrs (note this dict is a shallow copy):
     fn.__dict__.update(f.__dict__)
     return fn

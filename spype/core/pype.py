@@ -8,8 +8,7 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from copy import deepcopy
 from types import MappingProxyType as MapProxy
-from typing import (Union, Dict, Optional, Callable, Any, List, Sequence,
-                    Hashable)
+from typing import Union, Dict, Optional, Callable, Any, List, Sequence, Hashable
 
 from spype.callbacks import debug_callback
 from spype.constants import CALLBACK_NAMES, HOW_ARGS
@@ -20,7 +19,7 @@ from spype.core.sbase import _SpypeBase
 from spype.exceptions import UnresolvedDependency, TaskReturnedNone
 from spype.utils import iterate, args_kwargs, de_args_kwargs
 
-pype_input_type = Optional[Union['task.Task', 'wrap.Wrap', 'Pype', str]]
+pype_input_type = Optional[Union["task.Task", "wrap.Wrap", "Pype", str]]
 
 
 class Pype(_SpypeBase):
@@ -33,11 +32,11 @@ class Pype(_SpypeBase):
         A task, pype, or any hashable that has been registered as a pype.
         If hashable, a copy of the registered pype will be returned.
     """
+
     _registered_pypes = {}  # a store for optionally registering pypes
     name = None
 
-    def __init__(self, arg: pype_input_type = None,
-                 name: Optional[Hashable] = None):
+    def __init__(self, arg: pype_input_type = None, name: Optional[Hashable] = None):
         """
 
         """
@@ -55,7 +54,7 @@ class Pype(_SpypeBase):
             with suppress(TypeError):
                 arg = self.__class__._registered_pypes.get(arg, arg)
             _connect_to_pype(self, arg, inplace=True)
-        self.register(name or getattr(arg, 'name', None))
+        self.register(name or getattr(arg, "name", None))
 
     # --- task hookup
 
@@ -66,17 +65,17 @@ class Pype(_SpypeBase):
         return _connect_to_pype(self, other, inplace=True)
 
     def __and__(self, other):
-        return _connect_to_pype(self, other, how='first')
+        return _connect_to_pype(self, other, how="first")
 
     def __iand__(self, other):
-        return _connect_to_pype(self, other, how='first', inplace=True)
+        return _connect_to_pype(self, other, how="first", inplace=True)
 
     def __lshift__(self, other):
         return _connect_to_pype(self, other, wrap_func=lambda x: x.fan())
 
     def __rshift__(self, other):
         def task_func(x):
-            return x.agg(scope='object')
+            return x.agg(scope="object")
 
         return _connect_to_pype(self, other, wrap_func=task_func)
 
@@ -91,14 +90,14 @@ class Pype(_SpypeBase):
         que.append((self.flow.get_input_wrap(), (args, kwargs)))
         self._run_queue(_meta, que)
         # set results
-        self.outputs = _meta['outputs']
-        return _meta['output'][0]
+        self.outputs = _meta["outputs"]
+        return _meta["output"][0]
 
     def _run_queue(self, _meta, que):
         """ run the queue until complete """
         # run que until complete or all tasks are waiting agg results
         assert self.flow.get_input_wrap().task is task.pype_input
-        fixtures = MapProxy({'meta': _meta, 'pype': self, **self._partials})
+        fixtures = MapProxy({"meta": _meta, "pype": self, **self._partials})
 
         while len(que):
             wrap_, (args, kwargs) = que.pop()
@@ -106,29 +105,29 @@ class Pype(_SpypeBase):
             try:
                 output = wrap_(*args, **kwargs, _pype_fixtures=fixtures)
             except UnresolvedDependency:  # task needs to be put back
-                _meta['defer_count'][wrap_] += 1  # up task deferment counter
+                _meta["defer_count"][wrap_] += 1  # up task deferment counter
                 que.appendleft((wrap_, (args, kwargs)))
                 continue
             except TaskReturnedNone:  # task returned None
                 continue
             else:  # everything went fine
-                _meta['outputs'][wrap_.task] = output
+                _meta["outputs"][wrap_.task] = output
                 for neighbor in self.flow.neighbors(wrap_):  # queue neighbors
                     neighbor._queue_up(output, _meta, que, sending_wrap=wrap_)
         # run tasks that waited for object scoped aggregations
         self._run_aggregations(_meta, que)
-        _meta['output'].append(de_args_kwargs(*output))
+        _meta["output"].append(de_args_kwargs(*output))
 
     def _run_aggregations(self, _meta, que):
         """ run aggregated values """
         # collect aggregated things and run queue again
-        for wrap_ in _meta['object_scope_map']:
+        for wrap_ in _meta["object_scope_map"]:
             # dont run again if object scope is finished
-            if wrap_ in _meta['object_scope_finished']:
+            if wrap_ in _meta["object_scope_finished"]:
                 continue
-            _meta['object_scope_finished'].add(wrap_)  # mark as complete
-            needed_task = _meta['object_scope_map'][wrap_]
-            inputs = _meta['object_aggregates'][needed_task]
+            _meta["object_scope_finished"].add(wrap_)  # mark as complete
+            needed_task = _meta["object_scope_map"][wrap_]
+            inputs = _meta["object_aggregates"][needed_task]
             if len(inputs):
                 que.append((wrap_, args_kwargs(inputs)))
         if len(que):  # if there is anything on the queue run it again
@@ -151,7 +150,7 @@ class Pype(_SpypeBase):
             defer_count=defaultdict(lambda: 0),
             output=[],  # a list for storing results
             pype_inputs=None,  # store inputs for first pype
-            print_flow=getattr(self, 'print_flow', False),
+            print_flow=getattr(self, "print_flow", False),
         )
         return out
 
@@ -172,7 +171,7 @@ class Pype(_SpypeBase):
 
     # --- flow control attributes
 
-    def iff(self, predicate: Callable[[Any], bool], inplace=False) -> 'Pype':
+    def iff(self, predicate: Callable[[Any], bool], inplace=False) -> "Pype":
         """
         Run data through the pype only if predicate evaluates to True.
 
@@ -203,7 +202,7 @@ class Pype(_SpypeBase):
     def __setitem__(self, key, value):
         if isinstance(value, task.Task):
             if value not in self.flow.tasks:
-                _connect_to_pype(self, value, how='first', inplace=True)
+                _connect_to_pype(self, value, how="first", inplace=True)
         self._partials[key] = value
 
     def __len__(self):
@@ -214,8 +213,10 @@ class Pype(_SpypeBase):
         nodes = [x.task for x in self.flow.wraps]
         edges = [(x.task, y.task) for x, y in self.flow.edges]
         deps = [(x.task, y.task) for x, y in self.dependencies.edges]
-        msg = (f'Pype isntance\n\nNODES: \n\n{nodes} \n\n EDGES: \n\n'
-               f'{edges} \n\nDEPENDENCIES:\n\n {deps}\n')
+        msg = (
+            f"Pype isntance\n\nNODES: \n\n{nodes} \n\n EDGES: \n\n"
+            f"{edges} \n\nDEPENDENCIES:\n\n {deps}\n"
+        )
         return msg
 
     def __repr__(self):
@@ -258,7 +259,7 @@ class Pype(_SpypeBase):
     # --- task stuff
 
     @property
-    def _first_tasks(self) -> List['wrap.Wrap']:
+    def _first_tasks(self) -> List["wrap.Wrap"]:
         """ return all nodes (wraps) attached to pype input"""
         input_wrap = self.flow.get_input_wrap()
         return list(self.flow.neighbors(input_wrap))
@@ -271,8 +272,12 @@ class Pype(_SpypeBase):
         connected = {x for x in self.flow.node_map if self.flow.node_map[x]}
         return set(self.flow.wraps) - connected
 
-    def add_callback(self, callback: callable, callback_type: str,
-                     tasks: Optional[Sequence['task.Task']] = None) -> 'Pype':
+    def add_callback(
+        self,
+        callback: callable,
+        callback_type: str,
+        tasks: Optional[Sequence["task.Task"]] = None,
+    ) -> "Pype":
         """
         Add a callback to all, or some, tasks in the pype. Return new Pype.
 
@@ -289,23 +294,28 @@ class Pype(_SpypeBase):
         -------
         A copy of Pype
         """
-        assert callback_type in CALLBACK_NAMES, (
-            f'unsported callback type {callback_type}')
+        assert (
+            callback_type in CALLBACK_NAMES
+        ), f"unsported callback type {callback_type}"
         pype = self.copy()
         # get a list of wraps to apply callbacks to
         if tasks is None:
             wraps = pype.flow.wraps
         else:
-            wraps_ = [iterate(selected_wraps) for task in iterate(tasks)
-                      for selected_wraps in pype.flow.tasks[task]]
+            wraps_ = [
+                iterate(selected_wraps)
+                for task in iterate(tasks)
+                for selected_wraps in pype.flow.tasks[task]
+            ]
             wraps = itertools.chain.from_iterable(wraps_)
         # apply callbacks
         for wrap_ in wraps:
             setattr(wrap_, callback_type, callback)
         return pype
 
-    def debug(self, tasks: Optional[Sequence['task.Task']] = None,
-              callback_type='on_start') -> 'Pype':
+    def debug(
+        self, tasks: Optional[Sequence["task.Task"]] = None, callback_type="on_start"
+    ) -> "Pype":
         """
         Return of copy of Pype with debugging callbacks set.
 
@@ -350,10 +360,12 @@ class Pype(_SpypeBase):
 class _TaskView(_SpypeBase):
     """ A class for selecting a task from a pype """
 
-    def __init__(self, task_: 'task.Task', pype: Pype):
+    def __init__(self, task_: "task.Task", pype: Pype):
         if len(pype.flow.tasks[task_]) != 1:
-            msg = (f'pype has {len(pype.flow.tasks[task])} instances of {task}'
-                   f'it must have exactly one to use this feature.')
+            msg = (
+                f"pype has {len(pype.flow.tasks[task])} instances of {task}"
+                f"it must have exactly one to use this feature."
+            )
             raise TypeError(msg)
         self.task = task_
         self.pype = pype
@@ -368,29 +380,26 @@ class _TaskView(_SpypeBase):
         return _connect_to_pype(self.pype, other, how=self.task)
 
     def __ior__(self, other):
-        return _connect_to_pype(self.pype, other, inplace=True,
-                                how=self.task)
+        return _connect_to_pype(self.pype, other, inplace=True, how=self.task)
 
     def __lshift__(self, other):
         def task_func(x):
             return x.fan()
 
-        return _connect_to_pype(self.pype, other, wrap_func=task_func,
-                                how=self.task)
+        return _connect_to_pype(self.pype, other, wrap_func=task_func, how=self.task)
 
     def __rshift__(self, other):
         def task_func(x):
-            return x.agg(scope='object')
+            return x.agg(scope="object")
 
-        return _connect_to_pype(self.pype, other, wrap_func=task_func,
-                                how=self.task)
+        return _connect_to_pype(self.pype, other, wrap_func=task_func, how=self.task)
 
 
 # ------------------- pype functions
 
 
-pype_or_wrap = Union[Pype, 'wrap.Wrap']
-pype_wrap_or_task = Union[Pype, 'wrap.Wrap', 'task.Task']
+pype_or_wrap = Union[Pype, "wrap.Wrap"]
+pype_wrap_or_task = Union[Pype, "wrap.Wrap", "task.Task"]
 
 
 def _get_attach_wraps(pype, how):
@@ -402,9 +411,9 @@ def _get_attach_wraps(pype, how):
         if isinstance(arg, task.Task):
             assert arg in pype.flow.tasks and len(pype.flow.tasks[arg]) == 1
             out.append(pype.flow.tasks[arg][0])
-        elif how == 'last':
+        elif how == "last":
             out += pype._last_tasks
-        elif how == 'first':
+        elif how == "first":
             out.append(pype.flow.tasks[task.pype_input][0])
     return out
 
@@ -434,11 +443,10 @@ def _yield_first_wraps(obj: pype_or_wrap):
             yield first_wrap
 
 
-def _apply_wrap_func(obj: pype_or_wrap,
-                     func: Callable[['wrap.Wrap'], None]):
+def _apply_wrap_func(obj: pype_or_wrap, func: Callable[["wrap.Wrap"], None]):
     """ apply func to the first wrap in obj if pype or to obj itself
     if it is a wrap """
-    assert isinstance(obj, (Pype, wrap.Wrap)), f'{obj} is not a wrap or pype'
+    assert isinstance(obj, (Pype, wrap.Wrap)), f"{obj} is not a wrap or pype"
     for wrap_ in _yield_first_wraps(obj):
         func(wrap_)
 
@@ -453,13 +461,17 @@ def _route_to_pype(route):
             out.append(_route_to_pype(task_like).iff(predicate))
         return task.pype_input | tuple(out)
     else:
-        assert hasattr(route, 'iff')
+        assert hasattr(route, "iff")
         return route
 
 
-def _connect_to_pype(pype: Pype, other, how: Union[str, 'task.Task'] = 'last',
-                     inplace: bool = False,
-                     wrap_func: Optional[Callable] = None):
+def _connect_to_pype(
+    pype: Pype,
+    other,
+    how: Union[str, "task.Task"] = "last",
+    inplace: bool = False,
+    wrap_func: Optional[Callable] = None,
+):
     """
     Add task or pype to the pype structure.
 
@@ -513,5 +525,5 @@ def _wrap_task(obj):
         return _wrap_task(wrap.Wrap(obj))
     elif isinstance(obj, (list, tuple)):
         return [_wrap_task(x) for x in obj]
-    assert isinstance(obj, wrap.Wrap), 'non_wrap returned by _wrap_task'
+    assert isinstance(obj, wrap.Wrap), "non_wrap returned by _wrap_task"
     return obj

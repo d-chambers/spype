@@ -12,7 +12,16 @@ from spype.core.digraph import _WrapDiGraph
 from spype.exceptions import InvalidPype
 from spype.utils import iterate
 
-append_func_name = pytest.append_func_name
+
+def append_func_name(list_like):
+    """ decorator to append function to list """
+
+    def _decor(func):
+        list_like.append(func.__name__)
+        return func
+
+    return _decor
+
 
 # --------------------- tasks/wraps for digraph testing
 
@@ -51,7 +60,7 @@ def return_str(x: str) -> str:
     return str(x)
 
 
-int_float_or_list = TypeVar('int_or_float', int, float, list)
+int_float_or_list = TypeVar("int_or_float", int, float, list)
 
 
 @task
@@ -66,6 +75,7 @@ INVALID_DIGRAPHS = []
 
 
 # --- valid graphs
+
 
 @pytest.fixture
 @append_func_name(VALID_DIGRAPHS)
@@ -89,8 +99,7 @@ def filled_digraph():
 def pype_net1():
     """ a simple network that uses the input pype """
     digraph = _WrapDiGraph()
-    digraph.add_edge([(pype_input.wrap(), ws[1]), (ws[1], ws[2]),
-                      (ws[2], ws[3])])
+    digraph.add_edge([(pype_input.wrap(), ws[1]), (ws[1], ws[2]), (ws[2], ws[3])])
     return digraph
 
 
@@ -149,6 +158,7 @@ def graph_with_valid_task_fit(digraph):
 
 # --- invalid graphs
 
+
 @pytest.fixture
 @append_func_name(INVALID_DIGRAPHS)
 def cyclic_graph(digraph):
@@ -167,9 +177,9 @@ def cyclic_dependencies_graph(digraph):
     two_to_one2 = task(lambda a, b: a + b).wrap()
 
     tt1 = two_to_one1.partial(a=ws[2].task)
-    tt1.task.__name__ = 'tt1'
+    tt1.task.__name__ = "tt1"
     tt2 = two_to_one2.partial(a=ws[1].task)
-    tt2.task.__name__ = 'tt2'
+    tt2.task.__name__ = "tt2"
 
     digraph.add_edge(ws[0], tt1)
     digraph.add_edge(tt1, ws[1])
@@ -216,13 +226,10 @@ class TestNodeWraps:
     """ tests for adding/removing wrap nodes to network """
 
     # a list of objects and expected values in nodes attr
-    nodes_to_add = [
-        (ws[1], {ws[1]}),
-        ([ws[1], ws[3], ws[3]], {ws[1], ws[3]}),
-    ]
+    nodes_to_add = [(ws[1], {ws[1]}), ([ws[1], ws[3], ws[3]], {ws[1], ws[3]})]
 
     # tests
-    @pytest.mark.parametrize('nodes, expected', nodes_to_add)
+    @pytest.mark.parametrize("nodes, expected", nodes_to_add)
     def test_add_single_node(self, digraph, nodes, expected):
         """ ensure the values put into the digraph node pool show up as
         expected """
@@ -363,7 +370,7 @@ class TestCopy:
         n1 = filled_digraph
         n2 = filled_digraph.copy()
         # iterate tasks and ensure each list was copied
-        for task_ in (set(n1.tasks) & set(n2.tasks)):
+        for task_ in set(n1.tasks) & set(n2.tasks):
             assert n1.tasks[task_] is not n2.tasks[task_]
 
 
@@ -375,7 +382,7 @@ class TestValidateDigraph:
         try:
             valid_digraph.validate()
         except Exception:
-            pytest.fail('should not raise')
+            pytest.fail("should not raise")
 
     def test_raies_on_invalid_digraph(self, invalid_digraph):
         """ ensure digraphs do raise on invalid digraphs """
@@ -389,7 +396,7 @@ class TestValidateDigraph:
             try:
                 graph_with_incompatible_types.validate()
             except InvalidPype:
-                pytest.fail('should not fail when type checking is turned off')
+                pytest.fail("should not fail when type checking is turned off")
 
     def test_disable_compat_check(self, graph_with_incompatible_arg_numbers):
         """ ensure compat. checks can be disabled """
@@ -399,12 +406,12 @@ class TestValidateDigraph:
             try:
                 graph.validate()
             except InvalidPype:
-                pytest.fail('should not fail when type checking is turned off')
+                pytest.fail("should not fail when type checking is turned off")
         # ensure the validate call can disable compat check
         try:
             graph.validate(check_task_compatibility=False)
         except InvalidPype:
-            pytest.fail('should not raise')
+            pytest.fail("should not raise")
 
 
 class TestPlotting:
@@ -424,8 +431,8 @@ class TestPlotting:
 
     def test_plotting_no_graphviz(self, digraph_with_dep, monkeypatch):
         """ patch graphviz to not be importable, ensure str returned """
-        monkeypatch.setitem(sys.modules, 'graphviz', None)
+        monkeypatch.setitem(sys.modules, "graphviz", None)
         with pytest.warns(UserWarning) as uw:
             digraph_with_dep.plot()
         msg = str(uw.list[0].message)
-        assert 'graphviz is not installed' in msg
+        assert "graphviz is not installed" in msg

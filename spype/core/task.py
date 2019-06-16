@@ -9,14 +9,26 @@ from types import MappingProxyType as MapProxy
 from typing import TypeVar, Optional, Callable, Any, Mapping
 
 import spype
-from spype.constants import (FIXTURE_NAMES, CALLBACK_NAMES, PYPE_FIXTURES,
-                             WRAP_FIXTURES, callback_type, predicate_type)
+from spype.constants import (
+    FIXTURE_NAMES,
+    CALLBACK_NAMES,
+    PYPE_FIXTURES,
+    WRAP_FIXTURES,
+    callback_type,
+    predicate_type,
+)
 from spype.core import wrap
 from spype.core.sbase import _SpypeBase
 from spype.exceptions import UnresolvedDependency, ExitTask
 from spype.types import valid_input, compatible_instance
-from spype.utils import (iterate, apply_partial, de_args_kwargs, copy_func,
-                         get_default_names, function_or_class_name)
+from spype.utils import (
+    iterate,
+    apply_partial,
+    de_args_kwargs,
+    copy_func,
+    get_default_names,
+    function_or_class_name,
+)
 
 _fixtures = {**dict.fromkeys(PYPE_FIXTURES), **dict.fromkeys(WRAP_FIXTURES)}
 EMPTY_FIXTURES = MapProxy(_fixtures)
@@ -24,28 +36,34 @@ EMPTY_FIXTURES = MapProxy(_fixtures)
 
 # --------------------------- Auxiliary tasks
 
+
 class _RunControl:
     """ A class to control executing callbacks in task's run method """
 
     _hard_exit = False
 
-    def __init__(self, task: 'Task', _fixtures, _callbacks, _predicates,
-                 args, kwargs):
+    def __init__(self, task: "Task", _fixtures, _callbacks, _predicates, args, kwargs):
         self.task = task
         # get fixtures passed in from wraps/pypes or use empty dicts
         _fixtures = _fixtures or EMPTY_FIXTURES
-        self.meta = _fixtures.get('meta', {}) or {}  # meta dict from pype or {}
+        self.meta = _fixtures.get("meta", {}) or {}  # meta dict from pype or {}
         # a proxy of outputs from previous tasks
-        self.task_outputs = self.meta.get('outputs', {})
+        self.task_outputs = self.meta.get("outputs", {})
         # get a signature and determine if type checking should happen
         self.sig = task.get_signature()
         # get bound arguments raise Appropriate Exceptions if bad imputs
-        self.bound = task._bind(self.sig, args, kwargs, _fixtures,
-                                self.task_outputs)
+        self.bound = task._bind(self.sig, args, kwargs, _fixtures, self.task_outputs)
         # create a dictionary of possible fixtures callbacks can ask for
-        self.control = dict(task=task, self=task, signature=self.sig, e=None,
-                            outputs=None, inputs=(args, kwargs), args=args,
-                            kwargs=kwargs, )
+        self.control = dict(
+            task=task,
+            self=task,
+            signature=self.sig,
+            e=None,
+            outputs=None,
+            inputs=(args, kwargs),
+            args=args,
+            kwargs=kwargs,
+        )
         self.wrap_callbacks = _callbacks if _callbacks is not None else {}
         self.wrap_predicates = list(iterate(_predicates))
         self.fixtures = ChainMap(self.control, _fixtures)
@@ -87,7 +105,7 @@ class _RunControl:
         func = ex_callbacks + list(iterate(task_callbacks) or [])
 
         # set default raise if not on_failures are set
-        if not func and name == 'on_failure':
+        if not func and name == "on_failure":
             func = raise_exception
 
         for callback in iterate(func):
@@ -102,7 +120,7 @@ class _RunControl:
 
     def run_predicates(self):
         """ run through each predicate and return None if not needed """
-        task_predicates = list(iterate(self.task.get_option('predicate')))
+        task_predicates = list(iterate(self.task.get_option("predicate")))
 
         for pred in task_predicates + self.wrap_predicates:
             # if a predicate returns a falsy value, bail out of task
@@ -113,17 +131,17 @@ class _RunControl:
 
     @property
     def output(self):
-        return self.control['outputs']
+        return self.control["outputs"]
 
     @output.setter
     def output(self, value):
         if not self._hard_exit:
-            self.control['outputs'] = value
+            self.control["outputs"] = value
 
     def _final_output(self, value):
-        assert not self._hard_exit, 'hard exit should not be True yet'
+        assert not self._hard_exit, "hard exit should not be True yet"
         self._hard_exit = True
-        self.control['outputs'] = value
+        self.control["outputs"] = value
 
     final_output = property(None, _final_output)
 
@@ -131,15 +149,15 @@ class _RunControl:
 
     def __enter__(self):
         self.run_predicates()
-        self._run_callback('on_start')
+        self._run_callback("on_start")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_val is not None:
-            self.control['e'] = exc_val
-            self._run_callback('on_failure')
+            self.control["e"] = exc_val
+            self._run_callback("on_failure")
         else:
-            self._run_callback('on_success')
-        self._run_callback('on_finish')
+            self._run_callback("on_success")
+        self._run_callback("on_finish")
         return True  # this supresses raised exceptions
 
     def __call__(self):
@@ -155,7 +173,7 @@ class _TaskMeta(abc.ABCMeta):
 
     def __instancecheck__(self, instance):
         """ special check to see if instance is task-like """
-        return hasattr(instance, 'run') and callable(instance)
+        return hasattr(instance, "run") and callable(instance)
 
 
 def _get_return_type(bound):
@@ -169,9 +187,11 @@ def _get_return_type(bound):
 
         params = bound.signature.parameters
         vals = bound.arguments
-        new_types = {val.annotation: type(vals[item])
-                     for item, val in params.items()
-                     if isinstance(val.annotation, TypeVar)}
+        new_types = {
+            val.annotation: type(vals[item])
+            for item, val in params.items()
+            if isinstance(val.annotation, TypeVar)
+        }
         # swap out return annotations
         for num, value in enumerate(out):
             if value in new_types:
@@ -188,7 +208,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
 
     # spype attributes
     signature: Optional[Signature] = None
-    pype: Optional['Pype'] = None
+    pype: Optional["Pype"] = None
     _decorator_task: bool = False
     supported_fixtures = FIXTURE_NAMES
     _is_task_wrap = False  # if this is a function wraped with task
@@ -196,13 +216,13 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
 
     def __init_subclass__(cls):
         # ensure a run method is defined
-        if '__call__' not in cls.__dict__:
+        if "__call__" not in cls.__dict__:
             # if not hasattr(cls, '__call__') or not callable(cls.run):
-            msg = f'{cls} must have a __call__ method defined'
+            msg = f"{cls} must have a __call__ method defined"
             raise TypeError(msg)
         # ensure run method is not defined (this would get overwritten)
-        if 'run' in cls.__dict__:
-            msg = (f'{cls} defines a run method, this is not permitted')
+        if "run" in cls.__dict__:
+            msg = f"{cls} defines a run method, this is not permitted"
             raise TypeError(msg)
 
     def get_signature(self) -> Signature:
@@ -231,9 +251,14 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         """
         return function_or_class_name(self)
 
-    def run(self, *args, _fixtures: Optional[Mapping[str, Any]] = None,
-            _callbacks: Optional[Mapping[str, callback_type]] = None,
-            _predicate: predicate_type = None, **kwargs):
+    def run(
+        self,
+        *args,
+        _fixtures: Optional[Mapping[str, Any]] = None,
+        _callbacks: Optional[Mapping[str, callback_type]] = None,
+        _predicate: predicate_type = None,
+        **kwargs,
+    ):
         """
         Call the task's __call__ and handle spype magic in the background.
 
@@ -252,24 +277,27 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         Parameters
         ----------
         _fixtures
-            A dict of fixtures. Keys are paramters that might be used by
+            A dict of fixtures. Keys are parameters that might be used by
             callbacks and values are the values to substitute.
         _callbacks
-            A dict of callbacks (
+            A dict of callbacks. Keys must be supported callback names (str)
+            and values must be callables.
+        _predicate
+            A single function, or sequence of functions, that return a bool.
+            Standard fixtures can be used, just like in callbacks.
         """
         # control will control will handle callbacks and predicates
-        control = _RunControl(self, _fixtures, _callbacks, _predicate,
-                              args, kwargs)
+        control = _RunControl(self, _fixtures, _callbacks, _predicate, args, kwargs)
         # fixture out which type should be returned (accounts for generics)
-        out_type = self._check_inputs(control.bound, *args, **kwargs, )
+        out_type = self._check_inputs(control.bound, *args, **kwargs)
         # run task and callbacks
         with control:
             control()
         # if printing is enabled print inputs/outputs
-        if control.meta.get('print_flow'):
+        if control.meta.get("print_flow"):
             inputs = (control.bound.args, control.bound.kwargs)
             name = self.get_name()
-            print(f'{name} got {inputs} and returned {control.output}')
+            print(f"{name} got {inputs} and returned {control.output}")
         return self._check_outputs(control.output, out_type)
 
     # --- validators
@@ -300,11 +328,18 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
                         raise UnresolvedDependency
                     values[key] = fixtures[key]
             try:  # try binding with new inputs
-                bind = apply_partial(signature.bind, *args, signature=signature,
-                                     partial_dict=values, **kwargs)
+                bind = apply_partial(
+                    signature.bind,
+                    *args,
+                    signature=signature,
+                    partial_dict=values,
+                    **kwargs,
+                )
             except TypeError:
-                msg = (f'{args} and {kwargs} are not valid inputs for {self} '
-                       f'which expects a signature of {signature}')
+                msg = (
+                    f"{args} and {kwargs} are not valid inputs for {self} "
+                    f"which expects a signature of {signature}"
+                )
                 raise TypeError(msg)
         return bind
 
@@ -313,25 +348,28 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         Ensure the inputs are of compatible types with the signature and get
         return type.
         """
-        check_type = self.get_option('check_type')
+        check_type = self.get_option("check_type")
         sig = _bound.signature
-        valid = valid_input(sig, *args, bound=_bound, check_type=check_type,
-                            **kwargs)
+        valid = valid_input(sig, *args, bound=_bound, check_type=check_type, **kwargs)
         if not valid:
-            msg = (f'{args} and {kwargs} are not valid inputs for {self} '
-                   f'which expects a signature of {sig}')
+            msg = (
+                f"{args} and {kwargs} are not valid inputs for {self} "
+                f"which expects a signature of {sig}"
+            )
             raise TypeError(msg)
 
         return _get_return_type(_bound)
 
     def _check_outputs(self, out, out_type):
         """ if out is not None, check compatibility """
-        check_type = self.get_option('check_type')
+        check_type = self.get_option("check_type")
         if out is None:  # bail early on None (none always should work)
             return None
         if check_type and not compatible_instance(out, out_type):
-            msg = (f'task: {self} returned: {out} which is not consistent with '
-                   f'expected output type of: {out_type}')
+            msg = (
+                f"task: {self} returned: {out} which is not consistent with "
+                f"expected output type of: {out_type}"
+            )
             raise TypeError(msg)
         return out
 
@@ -352,9 +390,11 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         supported = set(FIXTURE_NAMES) | call_params
         if not set(sig.parameters).issubset(supported):
             unsupported_parrams = set(sig.parameters) - FIXTURE_NAMES
-            msg = (f'{unsupported_parrams} are not a valid parameter names '
-                   f'for a task callback fixtures. Supported fixtures are: '
-                   f'{FIXTURE_NAMES} and call params are {call_params}')
+            msg = (
+                f"{unsupported_parrams} are not a valid parameter names "
+                f"for a task callback fixtures. Supported fixtures are: "
+                f"{FIXTURE_NAMES} and call params are {call_params}"
+            )
             raise TypeError(msg)
 
     def validate_callbacks(self) -> None:
@@ -380,7 +420,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
             raise AttributeError
 
     def __str__(self):
-        return f'{self.__class__.__name__} instance'
+        return f"{self.__class__.__name__} instance"
 
     def __repr__(self):
         return str(self)
@@ -398,7 +438,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
 
     # --- misc
 
-    def wrap(self, *args, **kwargs) -> 'wrap.Wrap':
+    def wrap(self, *args, **kwargs) -> "wrap.Wrap":
         """
         Instantiate a Wrap instance from this task.
 
@@ -410,7 +450,7 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
         """
         return wrap.Wrap(self, *args, **kwargs)
 
-    def copy(self) -> 'Task':
+    def copy(self) -> "Task":
         """
         Return a deep copy of task.
         """
@@ -423,13 +463,16 @@ class Task(_SpypeBase, metaclass=_TaskMeta):
 # --------------------------- Task decorator
 
 
-def task(func: Optional[Callable] = None, *,
-         on_start: Optional[callback_type] = None,
-         on_failure: Optional[callback_type] = None,
-         on_success: Optional[callback_type] = None,
-         on_finish: Optional[callback_type] = None,
-         predicate: Optional[predicate_type] = None,
-         **kwargs) -> Task:
+def task(
+    func: Optional[Callable] = None,
+    *,
+    on_start: Optional[callback_type] = None,
+    on_failure: Optional[callback_type] = None,
+    on_success: Optional[callback_type] = None,
+    on_finish: Optional[callback_type] = None,
+    predicate: Optional[predicate_type] = None,
+    **kwargs,
+) -> Task:
     """
     Decorator for registering a callable as a tasks.
 
@@ -460,20 +503,22 @@ def task(func: Optional[Callable] = None, *,
     # handle called decorator (ie no function passed yet)
     if func is None:
         locs = locals()
-        locs.pop('func')
+        locs.pop("func")
         return partial(task, **locs)
 
     for name, item in Task.__dict__.items():
         if callable(item):
             setattr(func, name, item.__get__(func))  # binds functions to func
     # set all task class attributes of Task using func as self
-    update_dict = {it: val for it, val in locals().items()
-                   if it != 'func' and val is not None}
+    update_dict = {
+        it: val for it, val in locals().items() if it != "func" and val is not None
+    }
     func.__call__ = func
     func.signature = spype.signature(func)
     func.__dict__.update(update_dict)
     # add all attributes that return a wrapped task
     for item in wrap.Wrap._wrap_funcs:
+
         def _func(*args, item=item, **kwargs):
             wrap_ = wrap.Wrap(func)
             wrap_func = getattr(wrap_, item)
@@ -491,6 +536,7 @@ class PypeInput(Task):
     A singleton Task that is used, explicitly or implicitly, to begin
     each pype.
     """
+
     singleton_instance = None
 
     def __new__(cls, *args, **kwargs):  # ensure singleton is instantiated

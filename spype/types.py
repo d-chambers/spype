@@ -8,8 +8,20 @@ import collections
 import functools
 import inspect
 from inspect import Signature, _empty, Parameter, BoundArguments
-from typing import (Union, Callable, Any, get_type_hints, Optional, Sequence,
-                    List, Dict, Mapping, Tuple, Set, TypeVar)
+from typing import (
+    Union,
+    Callable,
+    Any,
+    get_type_hints,
+    Optional,
+    Sequence,
+    List,
+    Dict,
+    Mapping,
+    Tuple,
+    Set,
+    TypeVar,
+)
 
 # Create a dictionary that contains functions for handling typing types
 TYPE_FUNCTIONS = {}
@@ -25,7 +37,7 @@ def _hash_type(type_: type):
     Use either __qualname__ attr or call type
     """
     try:
-        return f'{type_.__module__}.{type_.__qualname__}'
+        return f"{type_.__module__}.{type_.__qualname__}"
     except AttributeError:
         if isinstance(type_, object):
             return _hash_type(type(type_))
@@ -43,8 +55,13 @@ TYPE_MAP = {
 }
 
 # a hash of types that should not be turned into tuples in the callable check
-NO_TUPPLIZE_HASH = {_hash_type(Sequence), _hash_type(Tuple), _hash_type(List),
-                    _hash_type(Any), _hash_type(_empty)}
+NO_TUPPLIZE_HASH = {
+    _hash_type(Sequence),
+    _hash_type(Tuple),
+    _hash_type(List),
+    _hash_type(Any),
+    _hash_type(_empty),
+}
 
 
 def type_func(type_: type, check_instance_and_attrs: bool = True):
@@ -52,7 +69,7 @@ def type_func(type_: type, check_instance_and_attrs: bool = True):
 
     def deco(func):
 
-        if hasattr(func, '_original_func'):
+        if hasattr(func, "_original_func"):
             func = func._original_func
 
         @functools.wraps(func)
@@ -93,8 +110,7 @@ def _instance_type_check(obj, type_) -> Union[bool, tuple]:
         return True
 
 
-def get_isinstance_issubclass(obj: Union[object, type],
-                              type_: Union[object, type]):
+def get_isinstance_issubclass(obj: Union[object, type], type_: Union[object, type]):
     """
     Determine whether two objects should be compared with isinstance or
     issubclass, return the appropriate function.
@@ -142,7 +158,7 @@ def _get_func_output(func):
         except (IndexError, TypeError):
             return Any
     if not isinstance(func, Signature):
-        return get_type_hints(func).get('return', Any)
+        return get_type_hints(func).get("return", Any)
     else:
         return func.return_annotation
 
@@ -194,8 +210,7 @@ def nested_args_typing(obj, type_, strict):
     """ handle nested Types, Union, Optional"""
     func = all if strict else any
     if _hash_type(obj) in TYPE_FUNCTIONS:
-        return func([compatible_type(x, type_, strict)
-                     for x in obj.__args__])
+        return func([compatible_type(x, type_, strict) for x in obj.__args__])
     else:
         for arg in type_.__args__:
             if compatible_type(obj, arg, strict):
@@ -219,7 +234,7 @@ def handle_collections(obj, type_, strict):
 @type_func(Dict)
 def handle_mapping(obj, type_, strict):
     """ handle dict like types """
-    assert len(type_.__args__) == 2, 'mapping must have exactly 2 values'
+    assert len(type_.__args__) == 2, "mapping must have exactly 2 values"
     ktype, vtype = type_.__args__
     for key, val in iter_mapping(obj):
         con1 = compatible_type(key, ktype, strict)
@@ -279,16 +294,16 @@ def handle_callable(obj, type_, strict):
 @type_func(TypeVar, check_instance_and_attrs=False)
 def handle_type_var(obj, type_, strict):
     if isinstance(obj, TypeVar):  # if obj is a typevar compare constraints
-        return compatible_type(Tuple[obj.__constraints__],
-                               Tuple[type_.__constraints__])
+        return compatible_type(Tuple[obj.__constraints__], Tuple[type_.__constraints__])
     else:
         if type_.__constraints__ == ():  # no types attached to TypeVar
             return True
         return isinstance(obj, type_.__constraints__ or Any)
 
 
-def compatible_type(type1_: Union[type, str], type2_: type,
-                    strict: bool = True) -> bool:
+def compatible_type(
+    type1_: Union[type, str], type2_: type, strict: bool = True
+) -> bool:
     """
     Determine if a type
 
@@ -389,13 +404,19 @@ def _get_tupled_output(func):
     return out
 
 
-FUNC_TYPE_DICT: Dict[str, Callable] = {'output': _get_tupled_output,
-                                       'input': _get_func_input}
+FUNC_TYPE_DICT: Dict[str, Callable] = {
+    "output": _get_tupled_output,
+    "input": _get_func_input,
+}
 
 
-def compatible_callables(func1: Callable, func2: Callable,
-                         func1_type='output', func2_type='input',
-                         strict=True) -> bool:
+def compatible_callables(
+    func1: Callable,
+    func2: Callable,
+    func1_type="output",
+    func2_type="input",
+    strict=True,
+) -> bool:
     """
     Function for determining if callable input/outputs are compatible.
 
@@ -447,9 +468,13 @@ def compatible_callables(func1: Callable, func2: Callable,
     return compatible_type(func1_comp, func2_comp, strict=strict)
 
 
-def valid_input(func: Union[Signature, Callable], *args,
-                check_type: bool = True,
-                bound: Optional[BoundArguments] = None, **kwargs):
+def valid_input(
+    func: Union[Signature, Callable],
+    *args,
+    check_type: bool = True,
+    bound: Optional[BoundArguments] = None,
+    **kwargs,
+):
     """
     Return True if inputs are valid for a callable or signature.
 
@@ -510,13 +535,14 @@ def signature(func: Callable) -> Signature:
     params = collections.OrderedDict(sig.parameters)
     # get hints attached to functions. This evals string hints
     hints = get_type_hints(func)
-    return_annotation = hints.pop('return', Parameter.empty)
+    return_annotation = hints.pop("return", Parameter.empty)
     # swap out unevaluated annotations for evaluated ones
     for name, hint in hints.items():
         params[name] = params[name].replace(annotation=hint)
     # get new signature with evaluated annotations
-    out = sig.replace(parameters=list(params.values()),
-                      return_annotation=return_annotation)
+    out = sig.replace(
+        parameters=list(params.values()), return_annotation=return_annotation
+    )
     # ensure the same argument names are there and return
     assert set(out.parameters) == set(sig.parameters)
     return out

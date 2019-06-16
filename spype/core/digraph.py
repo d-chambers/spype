@@ -13,8 +13,8 @@ from spype.core import wrap
 from spype.exceptions import UnresolvableNetwork, IncompatibleTasks
 from spype.utils import iterate
 
-wrap_node_type = Union['wrap.Wrap', Sequence['wrap.Wrap']]
-edge_type = Sequence[Tuple['wrap.Wrap', 'wrap.Wrap']]
+wrap_node_type = Union["wrap.Wrap", Sequence["wrap.Wrap"]]
+edge_type = Sequence[Tuple["wrap.Wrap", "wrap.Wrap"]]
 
 
 def _get_edge_plot_attrs(wrap1, wrap2):
@@ -22,21 +22,21 @@ def _get_edge_plot_attrs(wrap1, wrap2):
     labels = wrap1._out_edge_lab | wrap2._in_edge_lab
 
     out = {}
-    if 'is_conditional' in labels:
-        out['label'] = wrap2.conditional_name
-        out['style'] = 'dashed'
-        out['fontsize'] = '10'
-    if 'is_fan' in labels or 'is_aggregate' in labels:
-        out['style'] = 'tapered'
-        out['arrowtail'] = 'none'
-        out['arrowhead'] = 'none'
-        out['penwidth'] = '7'
-        if 'is_fan' in labels and 'is_aggregate' in labels:
-            out['dir'] = 'both'
-        elif 'is_aggregate' in labels:
-            out['dir'] = 'forward'
-        elif 'is_fan' in labels:
-            out['dir'] = 'back'
+    if "is_conditional" in labels:
+        out["label"] = wrap2.conditional_name
+        out["style"] = "dashed"
+        out["fontsize"] = "10"
+    if "is_fan" in labels or "is_aggregate" in labels:
+        out["style"] = "tapered"
+        out["arrowtail"] = "none"
+        out["arrowhead"] = "none"
+        out["penwidth"] = "7"
+        if "is_fan" in labels and "is_aggregate" in labels:
+            out["dir"] = "both"
+        elif "is_aggregate" in labels:
+            out["dir"] = "forward"
+        elif "is_fan" in labels:
+            out["dir"] = "back"
     return out
 
 
@@ -48,8 +48,9 @@ class _WrapDiGraph:
     if you need something more general purpose checkout networkx.
     """
 
-    def __init__(self, wraps: Optional[wrap_node_type] = None,
-                 edges: Optional[edge_type] = None):
+    def __init__(
+        self, wraps: Optional[wrap_node_type] = None, edges: Optional[edge_type] = None
+    ):
         """
         Parameters
         ----------
@@ -96,7 +97,7 @@ class _WrapDiGraph:
                 self.wraps[wrap_] = wrap_.task
                 self.tasks[wrap_.task].append(wrap_)
                 # add dependencies
-                for dep in iterate(wrap_.features['dependencies']):
+                for dep in iterate(wrap_.features["dependencies"]):
                     self.dependencies[dep].add(wrap_)
 
     def remove_wrap(self, wrap: wrap_node_type, edges=True):
@@ -156,8 +157,7 @@ class _WrapDiGraph:
 
     # --- functions for finding out about networks structure
 
-    def neighbors(self, wrap_: 'wrap.Wrap', include_deps=False
-                  ) -> Set['wrap.Wrap']:
+    def neighbors(self, wrap_: "wrap.Wrap", include_deps=False) -> Set["wrap.Wrap"]:
         """
         Return a set of all neighbors to node.
         Parameters
@@ -171,7 +171,7 @@ class _WrapDiGraph:
         A list of Wrap_ objects next to wrap_.
         """
         if wrap_ not in self.wraps:
-            msg = f'{wrap_} is not in the network'
+            msg = f"{wrap_} is not in the network"
             raise KeyError(msg)
         if include_deps:
             touching = self.node_map[wrap_] | self.dependencies[wrap_.task]
@@ -184,7 +184,7 @@ class _WrapDiGraph:
     def yield_connected(self, wrap_, have_yielded=None, **kwargs):
         """ yield all wraps (nodes) connected to wrap_ """
         have_yielded = have_yielded or set()
-        for neighbor in (self.neighbors(wrap_, **kwargs) - have_yielded):
+        for neighbor in self.neighbors(wrap_, **kwargs) - have_yielded:
             if neighbor not in have_yielded:
                 have_yielded.add(neighbor)
                 yield neighbor
@@ -230,7 +230,7 @@ class _WrapDiGraph:
         try:
             import graphviz
         except (ImportError, ModuleNotFoundError):
-            warnings.warn('graphviz is not installed, displaying str repr')
+            warnings.warn("graphviz is not installed, displaying str repr")
             print(str(self))
             return
         dot = graphviz.Digraph(graph_attr=dict(rankdir="LR"))
@@ -239,19 +239,23 @@ class _WrapDiGraph:
             dot.node(str(id(nx_node)), nx_node.task_name)
         # plot connections
         for edge in self.edges:
-            dot.edge(str(id(edge[0])), str(id(edge[1])),
-                     **_get_edge_plot_attrs(edge[0], edge[1]))
+            dot.edge(
+                str(id(edge[0])),
+                str(id(edge[1])),
+                **_get_edge_plot_attrs(edge[0], edge[1]),
+            )
         # plot dependencies
         for task_, wraps in self.dependencies.items():
             if wraps:
                 assert len(self.tasks[task_]) == 1  # dep task should be unique
                 twrap = self.tasks[task_][0]
                 for wrap_ in wraps:
-                    dot.edge(str(id(twrap)), str(id(wrap_)), color='blue',
-                             arrowsize='.5')
+                    dot.edge(
+                        str(id(twrap)), str(id(wrap_)), color="blue", arrowsize=".5"
+                    )
         # save/view
         if file_name or view:
-            file_name = file_name or '.network.pdf'
+            file_name = file_name or ".network.pdf"
             dot.render(filename=file_name, view=view)
         return dot
 
@@ -265,29 +269,29 @@ class _WrapDiGraph:
         for wrap_ in self.wraps:
             # test for cycles
             if self.connected(wrap_, wrap_, include_deps=True):
-                msg = f'{wrap_} is connected to itself without a condition'
+                msg = f"{wrap_} is connected to itself without a condition"
                 raise UnresolvableNetwork(msg)
         # ensure all edges are compatible or continue
         if not check_task_compatibility:
             return
         for wrap1, wrap2 in self.edges:
             # if either wrap or parent have compat checks turned off skip
-            cw1 = wrap1.task.get_option('check_compatibility')
-            cw2 = wrap2.task.get_option('check_compatibility')
+            cw1 = wrap1.task.get_option("check_compatibility")
+            cw2 = wrap2.task.get_option("check_compatibility")
             if not (cw1 and cw2):
                 continue
             # perform compatibility check and raise if needed
             if not wrap1.compatible(wrap2, extra_params=extra_params):
-                msg = f'output of {wrap1} is not valid input to {wrap2}'
+                msg = f"output of {wrap1} is not valid input to {wrap2}"
                 raise IncompatibleTasks(msg)
 
     # --- merging and copying
 
-    def __or__(self, other: '_WrapDiGraph') -> '_WrapDiGraph':
+    def __or__(self, other: "_WrapDiGraph") -> "_WrapDiGraph":
         """ used to merge two networks together. Roughly equivilent to
         set1 | set2. Returns a digraph for which self and other are subsets"""
         # ensure we don't change any objects in network with subsequent calls
-        assert isinstance(other, _WrapDiGraph), 'other must be a _WrapDigraph'
+        assert isinstance(other, _WrapDiGraph), "other must be a _WrapDigraph"
         new = _WrapDiGraph()
         other = other.copy()
         # try to pop out wrap_input from other it it has one

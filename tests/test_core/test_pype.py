@@ -27,7 +27,18 @@ def append_func_to_list(a_list: list):
     return register
 
 
+def append_func_name(list_like):
+    """ decorator to append function to list """
+
+    def _decor(func):
+        list_like.append(func.__name__)
+        return func
+
+    return _decor
+
+
 # --- some conditionals. Must define on module level for pickle to work
+
 
 def bigger_than_0(x):
     return x > 0
@@ -119,10 +130,10 @@ def sum_range(num_list: List[int]) -> int:
 @function_task
 @spype.task
 def join_str(obj: List[str]) -> str:
-    return ''.join(obj)
+    return "".join(obj)
 
 
-TV = TypeVar('tv')
+TV = TypeVar("tv")
 
 
 @function_task
@@ -141,12 +152,12 @@ def int_to_str(obj: int) -> str:
 @spype.task
 def split_on_space(obj: str) -> list:
     """ yield the string split on spaces """
-    return obj.split(' ')
+    return obj.split(" ")
 
 
 @function_task
 @spype.task
-def join_on_str(obj: List[str], join_on='') -> str:
+def join_on_str(obj: List[str], join_on="") -> str:
     """ yield the string split on spaces """
     return join_on.join(obj)
 
@@ -178,96 +189,94 @@ VALID_PYPES = []
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def add2_mult2():
     """ hook three tasks together """
     return pype_input | add2 | mult2
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def raise2_add1():
     """ hook three tasks together """
     return pype_input | raise2 | add1
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def add2_mult2_add2():
     """ chain three tasks together """
     return pype_input | add2 | mult2 | add2
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def add2_fork_mult2_raise2():
     return pype_input | add2 | (mult2, raise2)
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def forked_aggregated_pype():
     return pype_input | add2 | (mult2, raise2) | divide2
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def joined_pypes(add2_mult2, raise2_add1):
     """ connect two pypes together """
     return pype_input | add2_mult2 | raise2_add1
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def joined_pypes_via_and(add2_mult2, raise2_add1):
     """ connect two pypes together """
     return pype_input | add2_mult2 & raise2_add1
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def iff_pype(add2_mult2):
     """ return a pype with an attached if statement. """
     return add2_mult2.iff(bigger_than_0)
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def route_pype(add2_mult2):
     """ setup a pype with a simple route object """
     pype = pype_input | {
         gt2: mult2,
-        lt2: {  # this is just to test nested dicts
-            lt2: {lt2: add2}
-        },
+        lt2: {lt2: {lt2: add2}},  # this is just to test nested dicts
         eq2: add2_mult2,
     }
     return pype
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def fan_aggregate_pype():
     """ a pype that fans out and aggregates """
     return pype_input | return_range.fan() | sum_range.agg()
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def fan_forward_aggregate():
     """ return a pype that has a fan and an aggregate """
     return (pype_input | return_range) << add1 | forward >> add1
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def nested_tuple_pype():
     """ return a pype that has a fan and an aggregate """
     return pype_input | ((add2, add1), (mult2, divide2)) | add1
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def aggregate_to_multiple_tasks():
     """ return a pype that aggregates to multple tasks """
     p1 = pype_input | add1 | add2
@@ -275,14 +284,14 @@ def aggregate_to_multiple_tasks():
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def pype_with_nested_wrap():
     """ return a pype that aggregates to multple tasks """
     return pype_input | (add1.wrap(), add2) | add1
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def pype_agg_fan_on_task_view():
     """ return a pype created with task views that has aggregate and fan """
     p1 = pype_input | return_range
@@ -292,14 +301,14 @@ def pype_agg_fan_on_task_view():
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def empty_pype():
     """ return an empty pype """
     return Pype()
 
 
 @pytest.fixture
-@pytest.append_func_name(VALID_PYPES)
+@append_func_name(VALID_PYPES)
 def pype2_from_quickstart():
     """ The second pype in the quickstart example """
     return spype.pype_input | (add2, raise2) | (divide2, multiply2) | add2
@@ -404,7 +413,7 @@ class TestPypeConstruction:
         try:
             Pype()  # passes if this doesn't raise
         except Exception:
-            pytest.fail('should not raise no empty pype creation')
+            pytest.fail("should not raise no empty pype creation")
 
     def test_pipe_no_args_last_task(self):
         """ ensure the last tasks of an empty pype is pype_input """
@@ -418,8 +427,8 @@ class TestPypeConstruction:
         with spype.options(print_flow=True):
             joined_pypes(2)
             out, err = capsys.readouterr()
-            assert 'got' in out
-            assert 'and returned' in out
+            assert "got" in out
+            assert "and returned" in out
 
     def test_tasks_in_pype(self):
         """ create a pype from tasks, ensure tasks are in wraps and tasks """
@@ -454,8 +463,9 @@ class TestPypeConstruction:
         pype = pype_input | add2 | (p1, p2, add2) | divide2
 
         # get a list of expected tasks
-        expected_tasks = set.union(set(p1.flow.tasks), set(p2.flow.tasks),
-                                   {add2}, {divide2})
+        expected_tasks = set.union(
+            set(p1.flow.tasks), set(p2.flow.tasks), {add2}, {divide2}
+        )
         # ensure all the tasks are in the tasks dict
         assert expected_tasks == set(pype.flow.tasks)
 
@@ -466,7 +476,7 @@ class TestPypeConstruction:
 
     def test_register_pype(self, add2_mult2):
         """ ensure pype can be registered """
-        name = 'add2_mult2'
+        name = "add2_mult2"
         pype = add2_mult2
         pype.register(name)
         assert pype.name == name
@@ -492,21 +502,21 @@ class TestValidatePype:
         try:
             pype_object.validate()
         except Exception:
-            pytest.fail('valid pype should not raise')
+            pytest.fail("valid pype should not raise")
 
 
 class TestCallPypes:
     """ tests for calling pypes """
 
     pype_input_output = [  # tuple of pype fixture, input and output
-        ('add2_mult2', 2, 8),
-        ('raise2_add1', 2, 5),
-        ('add2_mult2_add2', 5, 16),
-        ('joined_pypes', 2, 65),
+        ("add2_mult2", 2, 8),
+        ("raise2_add1", 2, 5),
+        ("add2_mult2_add2", 5, 16),
+        ("joined_pypes", 2, 65),
     ]
 
     # tests
-    @pytest.mark.parametrize('pype_name, in_arg, expected', pype_input_output)
+    @pytest.mark.parametrize("pype_name, in_arg, expected", pype_input_output)
     def test_output(self, pype_name, in_arg, expected, request):
         pype = request.getfixturevalue(pype_name)
         assert pype(in_arg) == expected
@@ -623,7 +633,7 @@ class TestJoinPypeWithGetItem:
         p1 = pype_input | add1 | add1
         with pytest.raises(TypeError) as e:
             p1[add1]
-        assert 'must have exactly one' in str(e)
+        assert "must have exactly one" in str(e)
 
     def test_call_wrap(self, add2_mult2):
         """ calling the object returned from getitem should call wrap """
@@ -695,7 +705,7 @@ class TestFixtureViaPartial:
         """ create a pype that has a task with a fixture that will cause the
         task to be kicked to the start of the queue """
         p1 = pype_input | add2 | mult2
-        p1 &= (pype_input | add1 | divide_numbers.partial(num1=mult2))
+        p1 &= pype_input | add1 | divide_numbers.partial(num1=mult2)
         return p1
 
     # tests
@@ -703,7 +713,7 @@ class TestFixtureViaPartial:
         """ ensure that when tasks are used to specify dependencies those
         tasks do not get copied """
         p1 = pype_input | add2 | mult2
-        p1 &= (pype_input | add1 | divide_numbers.partial(num1=mult2))
+        p1 &= pype_input | add1 | divide_numbers.partial(num1=mult2)
         # get tasks from task and wraps
         tasks1 = p1.flow.tasks
         tasks2 = {x for x in p1.flow.wraps.values()}
@@ -718,32 +728,32 @@ class TestFixtureViaPartial:
 
     def test_pype_dependency(self, pype_task_dep):
         """ ensure the pype dependencies get correctly resolved """
-        assert pype_task_dep(2) == 3 / 4.
+        assert pype_task_dep(2) == 3 / 4.0
 
     def test_pype_input_dependency(self, pype_input_dep):
         """ ensure using the kwarg 'input' returns the input to the pype """
-        assert pype_input_dep(1) == 1 / 3.
+        assert pype_input_dep(1) == 1 / 3.0
 
     def test_deplayed_dep(self, pype_delayed_dep):
         """ ensure a task that needs a dependency that is not yet calculated
         can get it. """
         pype_delayed_dep(1)
-        assert de_args_kwargs(*pype_delayed_dep.outputs[divide_numbers]) == 3.
+        assert de_args_kwargs(*pype_delayed_dep.outputs[divide_numbers]) == 3.0
 
     def test_bad_value_input_raises(self):
         """ ensure a partial with a bad input type raises if check_type """
-        pype = pype_input | add2 | divide_numbers.partial(num1='hey you')
+        pype = pype_input | add2 | divide_numbers.partial(num1="hey you")
         with pytest.raises(IncompatibleTasks):
             pype.validate()
 
     def test_bad_value_input_doesnt_raises(self):
         """ ensure a partial with a bad input type raises if check_type """
-        pype = pype_input | divide_numbers.partial(num1='hey you')
+        pype = pype_input | divide_numbers.partial(num1="hey you")
         with spype.set_options(check_type=False):
             try:
                 pype.validate()
             except Exception:
-                pytest.fail('should not raise with type check off')
+                pytest.fail("should not raise with type check off")
 
     def test_bad_task_dependency_raises(self):
         """ if a dependency is defiend as a task, but the task returns the
@@ -762,7 +772,7 @@ class TestFixtureViaSetItem:
     def pype_simple_dep(self):
         """ create a pype that has a partial dependency that is constant """
         p1 = pype_input | add2 | mult2 | divide_numbers
-        p1['num1'] = 3
+        p1["num1"] = 3
         return p1
 
     @pytest.fixture
@@ -770,7 +780,7 @@ class TestFixtureViaSetItem:
         """ create a pype that has a partial dependency that is a pype """
         p1 = pype_input | add2 | divide_numbers
         p1 &= add1
-        p1['num1'] = add1
+        p1["num1"] = add1
         return p1
 
     @pytest.fixture
@@ -778,15 +788,15 @@ class TestFixtureViaSetItem:
         """ getting the input to a function should also work with the
         pype_input """
         p1 = pype_input | add2 | divide_numbers
-        p1['num1'] = pype_input
+        p1["num1"] = pype_input
         return p1
 
     @pytest.fixture
     def pype_many_deps(self):
         """ test defining many dependencies """
         p1 = pype_input | many_args
-        p1['a'], p1['b'], p1['c'] = add1, add2, mult2
-        p1['d'], p1['e'] = raise2, divide2
+        p1["a"], p1["b"], p1["c"] = add1, add2, mult2
+        p1["d"], p1["e"] = raise2, divide2
         return p1
 
     # tests
@@ -800,7 +810,7 @@ class TestFixtureViaSetItem:
 
     def test_pype_input_dependency(self, pype_input_dep):
         """ ensure using the kwarg 'input' returns the input to the pype """
-        assert pype_input_dep(1) == 1 / 3.
+        assert pype_input_dep(1) == 1 / 3.0
 
     def test_many_deps(self, pype_many_deps):
         """ ensure a pype with many deps still works """
@@ -810,37 +820,37 @@ class TestFixtureViaSetItem:
         """ test that setting an item dep of a task not in the network
         implicitly connects it in parallel """
         p1 = pype_input | add2 | divide_numbers
-        p1['num1'] = add1
+        p1["num1"] = add1
         assert add1 in p1.flow.tasks
 
     def test_task_doc_example(self):
         pype = spype.pype_input | add2 | raise2 | divide_numbers
-        pype['num2'] = add2
+        pype["num2"] = add2
         assert pype(2) == 4
 
     def test_bad_value_input_raises(self):
         """ ensure a partial with a bad input type raises if check_type """
         pype = pype_input | add2 | divide_numbers
-        pype['num1'] = 'hey you'
+        pype["num1"] = "hey you"
         with pytest.raises(IncompatibleTasks):
             pype.validate()
 
     def test_bad_value_input_doesnt_raises(self):
         """ ensure a partial with a bad input type raises if check_type """
         pype = pype_input | divide_numbers
-        pype['num1'] = 'hey you'
+        pype["num1"] = "hey you"
         with spype.set_options(check_type=False):
             try:
                 pype.validate()
             except Exception:
-                pytest.fail('should not raise with type check off')
+                pytest.fail("should not raise with type check off")
 
     def test_bad_task_dependency_raises(self):
         """ if a dependency is defiend as a task, but the task returns the
         incorrect type it should raise on validation """
         p1 = pype_input | int_to_str
         p2 = p1 & (pype_input | add2 | divide_numbers)
-        p2['num1'] = int_to_str
+        p2["num1"] = int_to_str
         with pytest.raises(IncompatibleTasks):
             p2.validate()
 
@@ -909,14 +919,15 @@ class TestIff:
 
     def test_single_fixture(self, some_dict):
         """ ensure a predicate with a single """
+
         def log_pype(pype):
-            some_dict['pype'] = pype
+            some_dict["pype"] = pype
             return True
 
         pype = pype_input | divide_numbers.iff(log_pype)
         pype(1, 2)
 
-        assert some_dict['pype'] is pype
+        assert some_dict["pype"] is pype
 
 
 class TestFan:
@@ -952,9 +963,9 @@ class TestFan:
 
         p1 = spype.pype_input | split_on_space
         pype = p1 << print_input
-        pype('szechuan sauce snafu')
+        pype("szechuan sauce snafu")
 
-        assert some_list == 'szechuan sauce snafu'.split(' ')
+        assert some_list == "szechuan sauce snafu".split(" ")
 
 
 class TestAggregate:
@@ -1003,7 +1014,7 @@ class TestAggregate:
 
         p1 = (spype.pype_input | split_on_space) << pass_through.agg()
         pype = p1 >> join_on_str | print_input
-        pype('a full string')
+        pype("a full string")
 
 
 class TestRoute:
@@ -1020,14 +1031,15 @@ class TestPlot:
     """ test that the graph structures are plotted when graphviz """
 
     # skip these test cases if graphviz is not installed
-    pytest.importorskip('graphviz', 'you gotta install graphviz bro')
+    pytest.importorskip("graphviz", "you gotta install graphviz bro")
     import graphviz  # checks for python graphviz
+
     try:
         graphviz.version()  # checks for C library
     except graphviz.ExecutableNotFound:
-        pytest.skip('graphviz is not installed')
+        pytest.skip("graphviz is not installed")
 
-    file_name = '.deleteme'
+    file_name = ".deleteme"
 
     # fixtures
     @pytest.fixture(autouse=True)
@@ -1111,7 +1123,7 @@ class TestTemporaryCallbacks:
         def on_start():
             pass
 
-        p2 = add2_mult2.add_callback(on_start, 'on_start')
+        p2 = add2_mult2.add_callback(on_start, "on_start")
         assert p2 is not add2_mult2
         # tasks should not have been copied
         assert set(p2.flow.tasks) == set(add2_mult2.flow.tasks)
@@ -1125,7 +1137,7 @@ class TestTemporaryCallbacks:
         def on_start(task, inputs):
             out[task] = inputs
 
-        p2 = add2_mult2.add_callback(on_start, 'on_start')
+        p2 = add2_mult2.add_callback(on_start, "on_start")
         p2(2)
         assert set(out) == set(p2.flow.tasks)
 
@@ -1136,7 +1148,7 @@ class TestTemporaryCallbacks:
         def on_start(task, inputs):
             out[task] = inputs
 
-        p2 = add2_mult2.add_callback(on_start, 'on_start', tasks=[add2])
+        p2 = add2_mult2.add_callback(on_start, "on_start", tasks=[add2])
         p2(2)
         assert set(out) == {add2}
 
@@ -1146,11 +1158,11 @@ class TestTemporaryCallbacks:
         out = {}
 
         def new_set_trace():
-            out['trace_set'] = True
+            out["trace_set"] = True
 
-        monkeypatch.setattr('pdb.set_trace', new_set_trace)
+        monkeypatch.setattr("pdb.set_trace", new_set_trace)
 
         with add2_mult2.debug() as p:
             p(2)
 
-        assert out['trace_set']
+        assert out["trace_set"]
